@@ -1,8 +1,14 @@
-module GGen.Geometry where
+module GGen.Geometry ( faceLineIntersect
+                     , planeLineSegIntersect
+                     , planeFaceIntersect
+                     , invertLineSeg
+                     , lineSegDispl
+                     , mergeLineSegs
+                     , mergeLineSegs'
+                     ) where
 
-import Data.Maybe (mapMaybe, listToMaybe)
-import Data.List (sortBy, delete)
-import Control.Monad (guard)
+import Data.List (delete)
+import Data.Maybe (mapMaybe)
 import Numeric.LinearAlgebra
 import GGen.Types
 
@@ -56,33 +62,6 @@ planeFaceIntersect plane (Face {faceVertices=(a,b,c)}) =
                 2         -> Just $ LineSeg (head lineIntersects, last lineIntersects)
                 otherwise -> error "Unexpected number of intersections"
 
--- | A group of polygons marked with whether their interiors should be filled
-data BodySlice = BodySlice { bsPolys :: [(Polygon, Bool)] }
-                           deriving (Show)
-
--- | Try to match up a set of line segments into a closed polygon
-lineSegsToPolygon :: [LineSeg] -> Maybe Polygon
-lineSegsToPolygon [] = Just []
-lineSegsToPolygon (LineSeg (a,_):segs) = lineSegsToPolygon' [a] segs
-
-lineSegsToPolygon' :: Polygon -> [LineSeg] -> Maybe Polygon
-lineSegsToPolygon' poly []
-        | dist < pointTol  = Just poly
-        | otherwise        = Nothing
-        where start = last poly
-              end = head poly
-              dist = norm2 (end-start)
-
-lineSegsToPolygon' poly@(p:_) segs =
-        do let targets = segs ++ map invertLineSeg segs -- List of possible next line segments
-               distanceAndTarget seg@(LineSeg (x,_)) = (norm2 (p-x), seg)
-               distTargets = sortBy (\(da,_) (db,_) -> compare da db)
-                           $ filter ((<pointTol).fst)
-                           $ map distanceAndTarget targets
-           guard (not $ null distTargets)
-           let target@(LineSeg (a,b)) = snd $ head distTargets
-           lineSegsToPolygon' (b:a:poly) (delete target segs)
-
 -- | Reverse the order of line segment termini
 invertLineSeg :: LineSeg -> LineSeg
 invertLineSeg (LineSeg (a,b)) = LineSeg (b,a)
@@ -123,9 +102,4 @@ mergeLineSegs' ls = let tryMerge done [] = done
                                                   else let (m,ls') = head merged
                                                        in  tryMerge (m:done) ls'
                     in tryMerge [] ls
-
--- | Try to find the boundaries sitting in a plane
-planeSlice :: Plane -> [Face] -> Maybe Polygon
-planeSlice plane faces = let boundaries = mergeLineSegs' $ mapMaybe (planeFaceIntersect plane) faces
-                         in lineSegsToPolygon boundaries
 
