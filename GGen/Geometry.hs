@@ -1,10 +1,16 @@
 module GGen.Geometry where
 
-import Data.Maybe (mapMaybe)
+import Data.Maybe (mapMaybe, listToMaybe)
 import Data.List (sortBy, delete)
 import Control.Monad (guard)
 import Numeric.LinearAlgebra
 import GGen.Types
+
+-- | The maximum distance between identical points
+pointTol = 1e-4
+
+-- | The maximum deviation from one in a dot product to consider vectors parallel
+dirTol = 1e-4
 
 -- | Test whether a point sits on a face
 -- Based upon http://softsurfer.com/Archive/algorithm_0105/algorithm_0105.htm#Segment-Triangle
@@ -54,9 +60,6 @@ planeFaceIntersect plane (Face {faceVertices=(a,b,c)}) =
 data BodySlice = BodySlice { bsPolys :: [(Polygon, Bool)] }
                            deriving (Show)
 
--- | The maximum distance between identical points
-pointTol = 1e-4
-
 -- | Try to match up a set of line segments into a closed polygon
 lineSegsToPolygon :: [LineSeg] -> Maybe Polygon
 lineSegsToPolygon [] = Just []
@@ -84,8 +87,45 @@ lineSegsToPolygon' poly@(p:_) segs =
 invertLineSeg :: LineSeg -> LineSeg
 invertLineSeg (LineSeg (a,b)) = LineSeg (b,a)
 
+-- | Displacement of a line segment
+lineSegDispl :: LineSeg -> Vec
+lineSegDispl (LineSeg (a,b)) = b-a
+
+-- | Are two points the same to within pointTol?
+samePoint a b = norm2 (a-b) < pointTol
+
+-- | Try merging two line segments
+tryMergeLineSegs :: LineSeg -> LineSeg -> Maybe LineSeg
+tryMergeLineSegs a b =
+        let perms = [(a,b),
+                     (invertLineSeg a, b), (a, invertLineSeg b),
+                     (invertLineSeg a, invertLineSeg b)]
+            f (LineSeg (a1,a2), LineSeg (b1,b2)) =
+                    if a1 `samePoint` b1 then Just $ LineSeg (a2,b2)
+                                         else Nothing
+            dirDev = abs (lineSegDispl a `dot` lineSegDispl b) - 1
+            merged = mapMaybe f perms
+        in if dirDev < dirTol && (not $ null merged) then Just $ head merged
+                                                     else Nothing
+-- | Merging two line segments if possible
+mergeLineSegs :: LineSeg -> LineSeg -> [LineSeg]
+mergeLineSegs a b = maybe [a,b] (replicate 1) $ tryMergeLineSegs a b
+
+-- | List version of mergeLineSegs
+mergeLineSegs' :: [LineSeg] -> [LineSeg]
+mergeLineSegs' ls = let tryMerge done [] = done
+                        tryMerge done (l:ls) =
+                                let f l' = case tryMergeLineSegs l l' of
+                                                    Just try -> Just (try, delete l' ls)
+                                                    Nothing  -> Nothing
+                                    merged = mapMaybe f ls
+                                in if null merged then tryMerge (l:done) ls
+                                                  else let (m,ls') = head merged
+                                                       in  tryMerge (m:done) ls'
+                    in tryMerge [] ls
+
 -- | Try to find the boundaries sitting in a plane
 planeSlice :: Plane -> [Face] -> Maybe Polygon
-planeSlice plane faces = let boundaries = mapMaybe (planeFaceIntersect plane) faces
+planeSlice plane faces = let boundaries = mergeLineSegs' $ mapMaybe (planeFaceIntersect plane) faces
                          in lineSegsToPolygon boundaries
 
