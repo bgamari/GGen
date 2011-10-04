@@ -12,11 +12,11 @@ import GGen.Geometry.Types
 
 -- | Reverse the order of line segment termini
 invertLineSeg :: LineSeg -> LineSeg
-invertLineSeg (LineSeg (a,b)) = LineSeg (b,a)
+invertLineSeg (LineSeg a b) = LineSeg b a
 
 -- | Displacement of a line segment
 lineSegDispl :: LineSeg -> Vec
-lineSegDispl (LineSeg (a,b)) = b-a
+lineSegDispl (LineSeg a b) = b-a
 
 -- | Try merging two line segments
 tryMergeLineSegs :: LineSeg -> LineSeg -> Maybe LineSeg
@@ -25,8 +25,8 @@ tryMergeLineSegs a b =
                     , (invertLineSeg a, b)
                     , (a, invertLineSeg b)
                     , (invertLineSeg a, invertLineSeg b) ]
-            f (LineSeg (a1,a2), LineSeg (b1,b2)) =
-                    if a1 `samePoint` b1 then Just $ LineSeg (a2,b2)
+            f (LineSeg a1 a2, LineSeg b1 b2) =
+                    if a1 `samePoint` b1 then Just $ LineSeg a2 b2
                                          else Nothing
             dirDev = abs (lineSegDispl a `dot` lineSegDispl b) - 1
             merged = mapMaybe f perms

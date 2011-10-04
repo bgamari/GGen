@@ -12,9 +12,9 @@ approxDouble = PP.double . approx 2
 vec :: Vec -> Doc
 vec v = parens $ hcat $ punctuate (text ", ") $ map approxDouble $ toList v
 
-lineSeg (LineSeg (a,b)) = text "segment" <+> vec a <+> text "--" <+> vec b
+lineSeg (LineSeg a b) = text "segment" <+> vec a <+> text "--" <+> vec b
 
-line (Line (a,m)) = text "line" <+> vec a <+> text "->" <+> vec m
+line (Line a m) = text "line" <+> vec a <+> text "->" <+> vec m
 
 plane (Plane {planeNormal=n, planePoint=v}) =
         text "plane" <+> text "through" <+> vec v <+> text "with normal" <+> vec n

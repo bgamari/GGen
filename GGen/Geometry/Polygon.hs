@@ -56,7 +56,7 @@ rayPolygonIntersects ray poly =
 -- | Get line segments of polygon boundary
 polygonToLineSegs :: Polygon -> [LineSeg]
 polygonToLineSegs (_:[]) = []
-polygonToLineSegs poly@(a:b:_) = (LineSeg (a,b)) : (polygonToLineSegs $ tail poly)
+polygonToLineSegs poly@(a:b:_) = (LineSeg a b) : (polygonToLineSegs $ tail poly)
 
 -- | Try to find the boundaries sitting in a plane
 -- In order to identify the interior of each polygon, we build a map from line

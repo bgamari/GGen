@@ -12,9 +12,9 @@ import qualified Text.PrettyPrint.HughesPJ as PP
 import Text.PrettyPrint.HughesPJ (($$), (<+>))
 
 testMergeLineSegs = 
-        do let a = LineSeg (fromList [0,0,0], fromList [0.5,0,0])
-               b = LineSeg (fromList [0.5,0,0], fromList [1,0,0])
-               c = LineSeg (fromList [0,0,0], fromList [0,1,0])
+        do let a = LineSeg (fromList [0,0,0]) (fromList [0.5,0,0])
+               b = LineSeg (fromList [0.5,0,0]) (fromList [1,0,0])
+               c = LineSeg (fromList [0,0,0]) (fromList [0,1,0])
            print $ PP.vcat $ map P.lineSeg $ mergeLineSegs' [a,b,c]
 
 boundingBox :: STLFile -> (Vec, Vec)

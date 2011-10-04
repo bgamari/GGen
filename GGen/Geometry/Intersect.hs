@@ -14,7 +14,7 @@ import Data.Maybe (mapMaybe)
 
 -- | Point of intersection between a ray and a line segment
 rayLineSegIntersect :: Ray -> LineSeg -> Maybe Point
-rayLineSegIntersect ray@(Ray (u,v)) ls@(LineSeg (a,b))
+rayLineSegIntersect ray@(Ray u v) ls@(LineSeg a b)
         | x `dot` y == 1  = Nothing
         | otherwise       = 
                 let t' = -( (v `dot` v) `scale` (u-a) - ((u-a) `dot` v) `scale` v ) `dot` (b-a) / (v `dot` (b-a))^2
@@ -44,7 +44,7 @@ pointOnFace face p =
 
 -- | Point of intersection between a face and a line
 faceLineIntersect :: Face -> Line -> Maybe Point
-faceLineIntersect face@(Face {faceNormal=n, faceVertices=(v,_,_)}) (Line (a,m))
+faceLineIntersect face@(Face {faceNormal=n, faceVertices=(v,_,_)}) (Line a m)
         | pointOnFace face p    = Just p
         | otherwise             = Nothing
         where lambda = (n `dot` (v-a)) / (n `dot` m)
@@ -52,7 +52,7 @@ faceLineIntersect face@(Face {faceNormal=n, faceVertices=(v,_,_)}) (Line (a,m))
 
 -- | Point of intersection between plane and line segment
 planeLineSegIntersect :: Plane -> LineSeg -> Maybe Point
-planeLineSegIntersect (Plane {planeNormal=n, planePoint=v}) (LineSeg (a,b))
+planeLineSegIntersect (Plane {planeNormal=n, planePoint=v}) (LineSeg a b)
         | lambda < 0 = Nothing
         | lambda > 1 = Nothing
         | otherwise  = Just $ a + lambda `scale` (b-a)
@@ -61,12 +61,12 @@ planeLineSegIntersect (Plane {planeNormal=n, planePoint=v}) (LineSeg (a,b))
 -- | Line segment of intersection between plane and face
 planeFaceIntersect :: Plane -> Face -> Maybe LineSeg
 planeFaceIntersect plane (Face {faceVertices=(a,b,c)}) =
-        let lines = map LineSeg [(a,b), (b,c), (c,a)]
+        let lines = map (uncurry LineSeg) [(a,b), (b,c), (c,a)]
             lineIntersects = mapMaybe (planeLineSegIntersect plane) lines
         in case length lineIntersects of
                 0         -> Nothing
                 1         -> error "Only one intersection point"
-                2         -> Just $ LineSeg (head lineIntersects, last lineIntersects)
+                2         -> Just $ LineSeg (head lineIntersects) (last lineIntersects)
                 otherwise -> error ("Unexpected number of intersections: "++show lineIntersects)
 
 -- | The in-plane normal vector the intersection between a plane and face
