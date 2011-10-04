@@ -16,7 +16,7 @@ newtype LineSeg = LineSeg (Point, Point) deriving (Show, Eq)
 newtype Line = Line (Point, Vec) deriving (Show, Eq)
 
 -- | Plane defined by point and normal
-data Plane = Plane { normal :: Vec, point :: Point }
+data Plane = Plane { planeNormal :: Vec, planePoint :: Point }
                    deriving (Show, Eq)
 
 -- | Face defined by normal and three vertices

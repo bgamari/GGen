@@ -46,7 +46,7 @@ faceLineIntersect face@(Face {faceNormal=n, faceVertices=(v,_,_)}) (Line (a,m))
 
 -- | Point of intersection between plane and line segment
 planeLineSegIntersect :: Plane -> LineSeg -> Maybe Point
-planeLineSegIntersect (Plane {normal=n, point=v}) (LineSeg (a,b))
+planeLineSegIntersect (Plane {planeNormal=n, planePoint=v}) (LineSeg (a,b))
         | lambda < 0 = Nothing
         | lambda > 1 = Nothing
         | otherwise  = Just $ a + lambda `scale` (b-a)
