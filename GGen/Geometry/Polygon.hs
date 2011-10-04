@@ -15,7 +15,7 @@ import Text.PrettyPrint.HughesPJ (($$), (<+>))
 
 import Data.List (sortBy, delete, (\\), foldl')
 import Data.Maybe (fromJust, mapMaybe, catMaybes, listToMaybe)
-import Numeric.LinearAlgebra
+import Data.VectorSpace
 import GGen.Geometry.Types
 import GGen.Geometry.LineSeg (invertLineSeg)
 import GGen.Geometry.Intersect (rayLineSegIntersect, planeFaceIntersect, planeFaceNormal)
@@ -29,7 +29,7 @@ lineSegPaths ls = let (p,rest) = lineSegPath' ls [] True
 lineSegPath' :: [LineSeg] -> LineSegPath -> Bool -> (LineSegPath, [LineSeg])
 lineSegPath' (l:ls) [] _ = lineSegPath' ls [l] True
 lineSegPath' ls path@(p:_) canFlip =
-        let dist l = norm2 $ lsBegin p - lsEnd l
+        let dist l = magnitude $ lsBegin p ^-^ lsEnd l
             next   = listToMaybe
                    $ sortBy (\l l' -> compare (dist l) (dist l'))
                    $ filter (\l -> dist l < pointTol) ls
@@ -80,7 +80,7 @@ planeSlice plane faces =
             orientPath path = let l = head path
                                   face = maybe (error $ "Can't find face for line"++show l) id
                                        $ lookup l boundaryMap'
-                                  origin = lsBegin l + 0.5 `scale` (lsEnd l - lsBegin l)
+                                  origin = lerp (lsBegin l) (lsEnd l) 0.5
                                   normal = planeFaceNormal plane face
                                   intersects = rayLineSegPathIntersects (Ray origin normal) path
                                   hi = PP.text "origin" <+> P.point origin

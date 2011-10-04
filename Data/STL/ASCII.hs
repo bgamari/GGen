@@ -1,6 +1,7 @@
-module Data.STL.ASCII (parse) where
+module Data.STL.ASCII (Data.STL.ASCII.parse) where
 
-import Numeric.LinearAlgebra
+import Data.VectorSpace
+import Data.Cross
 import Data.Attoparsec
 import qualified Data.Attoparsec.Char8 as C
 import qualified Data.ByteString as B
@@ -8,8 +9,8 @@ import qualified Data.ByteString.Char8 as BC
 import GGen.Geometry.Types
 
 data STLFile = STLFile { stlName :: String
-                       , stlFacets :: [Face] }
-                       deriving (Show, Eq)
+                       , stlFacets :: [Face]
+                       } deriving (Show, Eq)
 
 sstring = string . BC.pack
 
@@ -28,14 +29,17 @@ facet = do sstring "facet normal "
            C.skipSpace
 
            -- Some software leaves the normal vectors zeroed
-           let normal = if norm2 n == 0 then normalize $ (b-a) `cross3` (c-a)
-                                        else n
+           let normal = if magnitude n == 0 then normalized $ (b ^-^ a) `cross3` (c-a)
+                                            else n
            return $ Face { faceNormal=normal
                          , faceVertices=(a,b,c) }
-        where vector = do v <- count 3 (do a <- C.double
-                                           C.char ' '
-                                           return a)
-                          return $ fromList v
+        where entry = do a <- C.double
+                         C.char ' '
+                         return a
+              vector = do x <- entry
+                          y <- entry
+                          z <- entry
+                          return (x,y,z)
               vertex = sstring "vertex " >> vector
            
 stlFile = do sstring "solid"
@@ -49,7 +53,7 @@ stlFile = do sstring "solid"
 
 parse :: FilePath -> IO STLFile
 parse filename = do a <- B.readFile filename
-                    return $ parse stlFile a
-
-main = do print $ parse "z-tensioner_1off.stl"
+                    case Data.Attoparsec.parse stlFile a of
+                         Done _ r  -> return r
+                         e         -> error $ "Parsing error"++show e
 

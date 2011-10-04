@@ -1,6 +1,6 @@
 module GGen.Pretty where
 
-import Numeric.LinearAlgebra
+import Data.VectorSpace
 import Text.PrettyPrint.HughesPJ as PP
 import GGen.Geometry.Types
 
@@ -10,7 +10,7 @@ approx places x = (realToFrac $ round $ 10^places*x) / 10^places
 approxDouble = PP.double . approx 2
 
 vec :: Vec -> Doc
-vec v = parens $ hcat $ punctuate (text ", ") $ map approxDouble $ toList v
+vec (x,y,z) = parens $ hcat $ punctuate (text ", ") $ map approxDouble [x,y,z]
 point = vec
 
 lineSeg (LineSeg a b) = text "segment" <+> vec a <+> text "--" <+> vec b

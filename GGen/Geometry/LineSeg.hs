@@ -6,8 +6,7 @@ module GGen.Geometry.LineSeg ( invertLineSeg
 
 import Data.List ((\\), foldl')
 import Data.Maybe (mapMaybe)
-import Numeric.LinearAlgebra
-import Numeric.LinearAlgebra.Utils
+import Data.VectorSpace
 import GGen.Geometry.Types
 
 -- | Reverse the order of line segment termini
@@ -16,7 +15,7 @@ invertLineSeg (LineSeg a b) = LineSeg b a
 
 -- | Displacement of a line segment
 lineSegDispl :: LineSeg -> Vec
-lineSegDispl (LineSeg a b) = b-a
+lineSegDispl (LineSeg a b) = b ^-^ a
 
 -- | Try merging two line segments
 tryMergeLineSegs :: LineSeg -> LineSeg -> Maybe LineSeg
@@ -28,7 +27,7 @@ tryMergeLineSegs a b =
             f (LineSeg a1 a2, LineSeg b1 b2) =
                     if a1 `samePoint` b1 then Just $ LineSeg a2 b2
                                          else Nothing
-            dirDev = abs (lineSegDispl a `dot` lineSegDispl b) - 1
+            dirDev = abs (lineSegDispl a <.> lineSegDispl b) - 1
             merged = mapMaybe f perms
         in if dirDev < dirTol && (not $ null merged) then Just $ head merged
                                                      else Nothing
@@ -53,6 +52,6 @@ mergeLineSegs' ls = foldl' mergeLineSegIntoList [] ls
 
 -- QuickCheck properties
 prop_invert_displacement :: LineSeg -> Bool
-prop_invert_displacement l = (lineSegDispl $ invertLineSeg l) == -1*lineSegDispl l
+prop_invert_displacement l = (lineSegDispl $ invertLineSeg l) == (negateV $ lineSegDispl l)
 
 props = [ prop_invert_displacement ]

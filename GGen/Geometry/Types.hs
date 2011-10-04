@@ -13,11 +13,10 @@ module GGen.Geometry.Types ( pointTol
                            , Ray(..)
                            ) where
 
-import Numeric.LinearAlgebra
-import Numeric.LinearAlgebra.Utils (normalize)
+import Data.VectorSpace
 
 import Test.QuickCheck
-import Numeric.LinearAlgebra.QuickCheck
+import Data.VectorSpace.QuickCheck
 import Control.Monad (liftM2)
 
 -- | The maximum distance between identical points
@@ -28,22 +27,22 @@ dirTol = 1e-3 :: Double
 
 
 -- | Spatial vector
-type Vec = Vector Double
+type Vec = (Double, Double, Double)
 
 -- | Are two vectors parallel to within dirTol
 sameDir :: Vec -> Vec -> Bool
-sameDir a b = abs (normalize a `dot` normalize b) - 1 < dirTol
+sameDir a b = abs (normalized a <.> normalized b) - 1 < dirTol
 
 -- | Spatial point
 type Point = Vec
 
 -- | Are two points the same to within pointTol?
 samePoint :: Point -> Point -> Bool
-samePoint a b = norm2 (a-b) < pointTol
+samePoint a b = magnitude (a ^-^ b) < pointTol
 
 -- | Line segment defined by two terminal points
 data LineSeg = LineSeg { lsBegin :: Point
-                       , lsEnd ::Point
+                       , lsEnd :: Point
                        } deriving (Show, Eq)
 
 instance Arbitrary LineSeg where arbitrary = (liftM2 LineSeg) arbitrary arbitrary
