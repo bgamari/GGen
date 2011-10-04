@@ -34,6 +34,8 @@ samePoint a b = norm2 (a-b) < pointTol
 data LineSeg = LineSeg { lsBegin :: Point
                        , lsEnd ::Point
                        } deriving (Show, Eq)
+
+-- | A contiguous path of line segments
 type LineSegPath = [LineSeg]
 
 -- | Line defined by point and direction
