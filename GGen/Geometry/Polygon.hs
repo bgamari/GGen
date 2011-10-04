@@ -8,6 +8,11 @@ module GGen.Geometry.Polygon ( lineSegPaths
                              , OrientedPolygon
                              ) where
 
+import Debug.Trace
+import qualified GGen.Pretty as P
+import qualified Text.PrettyPrint.HughesPJ as PP
+import Text.PrettyPrint.HughesPJ (($$), (<+>))
+
 import Data.List (sortBy, delete, (\\), foldl')
 import Data.Maybe (fromJust, mapMaybe, catMaybes, listToMaybe)
 import Numeric.LinearAlgebra
@@ -66,14 +71,24 @@ planeSlice :: Plane -> [Face] -> [OrientedPolygon]
 planeSlice plane faces =
         let findFaceIntersect face = planeFaceIntersect plane face >>= (return . (,face))
             boundaryMap = mapMaybe findFaceIntersect faces -- Map from line segments to faces
+            -- Make sure we include flipped line segments in map
+            boundaryMap' = boundaryMap ++ map (\(l,face) -> (invertLineSeg l, face)) boundaryMap
             paths = lineSegPaths $ map fst boundaryMap
+
+            -- | Figure out whether polygon should be filled
             orientPath :: LineSegPath -> OrientedPolygon
             orientPath path = let l = head path
-                                  face = fromJust $ lookup l boundaryMap
+                                  face = maybe (error $ "Can't find face for line"++show l) id
+                                       $ lookup l boundaryMap'
                                   origin = lsBegin l + 0.5 `scale` (lsEnd l - lsBegin l)
                                   normal = planeFaceNormal plane face
-                                  intersects = length $ rayLineSegPathIntersects (Ray origin normal) path
-                                  fill = intersects `mod` 2 == 1
+                                  intersects = rayLineSegPathIntersects (Ray origin normal) path
+                                  hi = PP.text "origin" <+> P.point origin
+                                    $$ PP.text "normal" <+> P.vec normal
+                                    $$ PP.text "intersects" <+> (PP.vcat $ map P.point intersects)
+                                    $$ PP.text ""
+                                  fill = trace (show hi)
+                                       $ length intersects `mod` 2 == 1
                               in (fromJust $ lineSegPathToPolygon path, fill)
         in map orientPath paths
 

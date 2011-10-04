@@ -28,10 +28,10 @@ boundingBox stl = let vecEnt n v = v @> n
                   in ( fromList [minimum xs, minimum ys, minimum zs]
                      , fromList [maximum xs, maximum ys, maximum zs] )
 
-main = do stl <- parse "cube-hole.stl"
+main = do stl <- parse "z-tensioner_1off.stl"
           let faces = stlFacets stl
           let plane = Plane { planeNormal=fromList [0.0,0.0,1.0]
-                            , planePoint=fromList [0,0,0] }
+                            , planePoint=fromList [0,0,10] }
 
           let (bbMin, bbMax) = boundingBox stl
           print $ PP.text "Bounding Box" <+> P.vec bbMin <+> PP.text "to" <+> P.vec bbMax
