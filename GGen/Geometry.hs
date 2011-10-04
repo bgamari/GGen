@@ -63,6 +63,15 @@ planeFaceIntersect plane (Face {faceVertices=(a,b,c)}) =
                 2         -> Just $ LineSeg (head lineIntersects, last lineIntersects)
                 otherwise -> error ("Unexpected number of intersections: "++show lineIntersects)
 
+-- | Line segment of intersection between plane and face with in-plane normal vector
+planeFaceIntersectN :: Plane -> Face -> Maybe (LineSeg, Vec)
+planeFaceIntersectN plane face =
+        do ls <- planeFaceIntersect plane face
+           let fn = faceNormal face
+               pn = planeNormal plane
+               normal = fn - (fn `dot` pn) `scale` pn
+           return (ls, normal)
+
 -- | Reverse the order of line segment termini
 invertLineSeg :: LineSeg -> LineSeg
 invertLineSeg (LineSeg (a,b)) = LineSeg (b,a)
