@@ -1,6 +1,7 @@
 module GGen.Geometry.Types ( pointTol
                            , dirTol
                            , Vec
+                           , sameDir
                            , Point
                            , samePoint
                            , LineSeg(..)
@@ -13,6 +14,7 @@ module GGen.Geometry.Types ( pointTol
                            ) where
 
 import Numeric.LinearAlgebra
+import Numeric.LinearAlgebra.Utils (normalize)
 
 -- | The maximum distance between identical points
 pointTol = 1e-4 :: Double
@@ -24,10 +26,15 @@ dirTol = 1e-4 :: Double
 -- | Spatial vector
 type Vec = Vector Double
 
+-- | Are two vectors parallel to within dirTol
+sameDir :: Vec -> Vec -> Bool
+sameDir a b = abs (normalize a `dot` normalize b) - 1 < dirTol
+
 -- | Spatial point
 type Point = Vec
---
+
 -- | Are two points the same to within pointTol?
+samePoint :: Point -> Point -> Bool
 samePoint a b = norm2 (a-b) < pointTol
 
 -- | Line segment defined by two terminal points
