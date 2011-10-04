@@ -11,6 +11,7 @@ approxDouble = PP.double . approx 2
 
 vec :: Vec -> Doc
 vec v = parens $ hcat $ punctuate (text ", ") $ map approxDouble $ toList v
+point = vec
 
 lineSeg (LineSeg a b) = text "segment" <+> vec a <+> text "--" <+> vec b
 
