@@ -17,10 +17,10 @@ import Numeric.LinearAlgebra
 import Numeric.LinearAlgebra.Utils (normalize)
 
 -- | The maximum distance between identical points
-pointTol = 1e-4 :: Double
+pointTol = 1e-2 :: Double
 
 -- | The maximum deviation from one in a dot product to consider vectors parallel
-dirTol = 1e-4 :: Double
+dirTol = 1e-3 :: Double
 
 
 -- | Spatial vector
