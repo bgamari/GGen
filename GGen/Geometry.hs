@@ -1,16 +1,19 @@
 module GGen.Geometry ( faceLineIntersect
                      , planeLineSegIntersect
                      , planeFaceIntersect
+                     , planeFaceNormal
                      , invertLineSeg
                      , lineSegDispl
                      , mergeLineSegs
                      , mergeLineSegs'
                      , samePoint
+                     , rayLineSegIntersect
                      ) where
 
-import Data.List (delete)
+import Data.List ((\\), foldl')
 import Data.Maybe (mapMaybe)
 import Numeric.LinearAlgebra
+import Numeric.LinearAlgebra.Utils
 import GGen.Types
 
 -- | The maximum distance between identical points
@@ -63,14 +66,12 @@ planeFaceIntersect plane (Face {faceVertices=(a,b,c)}) =
                 2         -> Just $ LineSeg (head lineIntersects, last lineIntersects)
                 otherwise -> error ("Unexpected number of intersections: "++show lineIntersects)
 
--- | Line segment of intersection between plane and face with in-plane normal vector
-planeFaceIntersectN :: Plane -> Face -> Maybe (LineSeg, Vec)
-planeFaceIntersectN plane face =
-        do ls <- planeFaceIntersect plane face
+-- | The in-plane normal vector the intersection between a plane and face
+planeFaceNormal :: Plane -> Face -> Vec
+planeFaceNormal plane face =
            let fn = faceNormal face
                pn = planeNormal plane
-               normal = fn - (fn `dot` pn) `scale` pn
-           return (ls, normal)
+           in fn - (fn `dot` pn) `scale` pn
 
 -- | Reverse the order of line segment termini
 invertLineSeg :: LineSeg -> LineSeg
@@ -101,16 +102,30 @@ tryMergeLineSegs a b =
 mergeLineSegs :: LineSeg -> LineSeg -> [LineSeg]
 mergeLineSegs a b = maybe [a,b] (replicate 1) $ tryMergeLineSegs a b
 
--- | List version of mergeLineSegs
+-- | Merge a line segment into a list, return list with new segment either merged or added
+mergeLineSegIntoList :: [LineSeg] -> LineSeg -> [LineSeg]
+mergeLineSegIntoList ls l =
+        let tryMerge l' = do new <- tryMergeLineSegs l l'
+                             return (new, ls \\ [l])
+            tries = mapMaybe tryMerge ls
+            (lMerged, ls') = head tries
+        in if null tries then l:ls
+                         else lMerged:ls'
+
+-- | Merge line segments in a list
 mergeLineSegs' :: [LineSeg] -> [LineSeg]
-mergeLineSegs' ls = let tryMerge done [] = done
-                        tryMerge done (l:ls) =
-                                let f l' = case tryMergeLineSegs l l' of
-                                                    Just try -> Just (try, delete l' ls)
-                                                    Nothing  -> Nothing
-                                    merged = mapMaybe f ls
-                                in if null merged then tryMerge (l:done) ls
-                                                  else let (m,ls') = head merged
-                                                       in  tryMerge (m:done) ls'
-                    in tryMerge [] ls
+mergeLineSegs' ls = foldl' mergeLineSegIntoList [] ls
+
+-- | Point of intersection between a ray and a line segment
+rayLineSegIntersect :: Ray -> LineSeg -> Maybe Point
+rayLineSegIntersect ray@(Ray (u,v)) ls@(LineSeg (a,b))
+        | x `dot` y == 1  = Nothing
+        | otherwise       = 
+                let t' = -( (v `dot` v) `scale` (u-a) - ((u-a) `dot` v) `scale` v ) `dot` (b-a) / (v `dot` (b-a))^2
+                    t  = (a - u + t' `scale` (b-a)) `dot` v / (v `dot` v)^2
+                    r = u + t `scale` v
+                in if t >= 0 && t' >= 0 && t' < 1 then Just r
+                                                  else Nothing
+        where x = normalize $ lineSegDispl ls
+              y = normalize v
 

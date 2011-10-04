@@ -38,6 +38,12 @@ main = do stl <- parse "cube-hole.stl"
           print $ PP.text "Bounding Box" <+> P.vec bbMin <+> PP.text "to" <+> P.vec bbMax
           --print $ PP.vcat $ map (\f->P.face f <+> PP.text "normal:" <+> (P.vec $ faceNormal f)) faces
 
+          let boundaries = mapMaybe (planeFaceIntersect plane) faces
+          print $ PP.vcat $ map P.lineSeg boundaries
+          print ""
+          print $ PP.vcat $ map (PP.braces . PP.hsep . map P.lineSeg) $ lineSegPaths boundaries
+          print ""
+
           let ps = either (error . show . P.lsToPolyError) id $ planeSlice plane faces
-          print $ PP.vcat $ map P.polygon ps
+          print $ PP.vcat $ map P.orientedPolygon ps
           

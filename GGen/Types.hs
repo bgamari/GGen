@@ -6,7 +6,7 @@ module GGen.Types ( Vec
                   , Plane(..)
                   , Face(..)
                   , Polygon
-                  , Ray
+                  , Ray(..)
                   ) where
 
 import Numeric.LinearAlgebra
