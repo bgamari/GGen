@@ -80,7 +80,7 @@ data Plane = Plane { planeNormal :: Vec
 instance Arbitrary Plane where
         arbitrary = do point <- arbitrary
                        NormalizedV normal <- arbitrary
-                       return $ Plane point normal
+                       return $ Plane {planeNormal=normal, planePoint=point}
 
 -- | Face defined by normal and three vertices
 data Face = Face { faceNormal :: Point
