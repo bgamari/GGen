@@ -51,3 +51,8 @@ mergeLineSegIntoList ls l =
 mergeLineSegs' :: [LineSeg] -> [LineSeg]
 mergeLineSegs' ls = foldl' mergeLineSegIntoList [] ls
 
+-- QuickCheck properties
+prop_invert_displacement :: LineSeg -> Bool
+prop_invert_displacement l = (lineSegDispl $ invertLineSeg l) == -1*lineSegDispl l
+
+props = [ prop_invert_displacement ]
