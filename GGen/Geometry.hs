@@ -5,6 +5,7 @@ module GGen.Geometry ( faceLineIntersect
                      , lineSegDispl
                      , mergeLineSegs
                      , mergeLineSegs'
+                     , samePoint
                      ) where
 
 import Data.List (delete)
@@ -60,7 +61,7 @@ planeFaceIntersect plane (Face {faceVertices=(a,b,c)}) =
                 0         -> Nothing
                 1         -> error "Only one intersection point"
                 2         -> Just $ LineSeg (head lineIntersects, last lineIntersects)
-                otherwise -> error "Unexpected number of intersections"
+                otherwise -> error ("Unexpected number of intersections: "++show lineIntersects)
 
 -- | Reverse the order of line segment termini
 invertLineSeg :: LineSeg -> LineSeg
@@ -86,7 +87,8 @@ tryMergeLineSegs a b =
             merged = mapMaybe f perms
         in if dirDev < dirTol && (not $ null merged) then Just $ head merged
                                                      else Nothing
--- | Merging two line segments if possible
+
+-- | Merge two line segments if possible, otherwise return both segments
 mergeLineSegs :: LineSeg -> LineSeg -> [LineSeg]
 mergeLineSegs a b = maybe [a,b] (replicate 1) $ tryMergeLineSegs a b
 

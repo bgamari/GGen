@@ -30,13 +30,14 @@ boundingBox stl = let vecEnt n v = v @> n
                   in ( fromList [minimum xs, minimum ys, minimum zs]
                      , fromList [maximum xs, maximum ys, maximum zs] )
 
-main = do stl <- parse "cube.stl"
+main = do stl <- parse "cube-hole.stl"
           let faces = stlFacets stl
-          let plane = Plane { normal=normalize $ fromList [0.5,0.5,0.5], point=fromList [0,0,0] }
+          let plane = Plane { normal=fromList [0.0,0.0,1.0], point=fromList [0,0,0] }
           let (bbMin, bbMax) = boundingBox stl
           print $ PP.text "Bounding Box" <+> P.vec bbMin <+> PP.text "to" <+> P.vec bbMax
-          --print $ PP.vcat $ map P.face faces
+          print $ PP.vcat $ map (\f->P.face f <+> PP.text "Normal:" <+> (P.vec $ faceNormal f)) faces
 
           let boundaries = mapMaybe (planeFaceIntersect plane) faces
-          print $ P.polygon $ either (error.show.P.lsToPolyError) id $ planeSlice plane faces
-
+              ps = either (error . show . P.lsToPolyError) id $ planeSlice plane faces
+          print $ PP.vcat $ map P.polygon ps
+          
