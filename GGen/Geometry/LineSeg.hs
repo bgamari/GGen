@@ -5,8 +5,9 @@ module GGen.Geometry.LineSeg ( invertLineSeg
                              ) where
 
 import Data.List ((\\), foldl')
-import Data.Maybe (mapMaybe)
+import Data.Maybe (mapMaybe, isJust, fromJust)
 import Data.VectorSpace
+import Data.VectorSpace.QuickCheck
 import GGen.Geometry.Types
 
 -- | Reverse the order of line segment termini
@@ -54,4 +55,14 @@ mergeLineSegs' ls = foldl' mergeLineSegIntoList [] ls
 prop_invert_displacement :: LineSeg -> Bool
 prop_invert_displacement l = (lineSegDispl $ invertLineSeg l) == (negateV $ lineSegDispl l)
 
-props = [ prop_invert_displacement ]
+-- | Split a line segment in two and ensure that the pieces are merged
+prop_merge_divided :: LineSeg -> Bool
+prop_merge_divided l = isJust m && l == fromJust m
+                       where f = lerp (lsBegin l) (lsEnd l)
+                             a = LineSeg (f 0) (f 0.5)
+                             b = LineSeg (f 0.5) (f 1)
+                             m = tryMergeLineSegs a b
+
+props = [ prop_invert_displacement
+        , prop_merge_divided
+        ]
