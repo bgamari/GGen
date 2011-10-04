@@ -3,7 +3,6 @@ module GGen.Pretty where
 import Numeric.LinearAlgebra
 import Text.PrettyPrint.HughesPJ as PP
 import GGen.Types
-import GGen.Polygon (LSToPolyError(..))
 
 approx :: Int -> Double -> Double
 approx places x = (realToFrac $ round $ 10^places*x) / 10^places
@@ -28,15 +27,3 @@ polygon p = text "polygon" <+> (hsep $ map vec p)
 orientedPolygon (p,True) = text "filled" <+> polygon p
 orientedPolygon (p,False) = text "unfilled" <+> polygon p
 
-lsToPolyError (CanNotClose poly) =
-           text "Can not close polygon"
-        $$ polygon poly
-
-lsToPolyError (NoTargets poly lss) = 
-           text "No targets found while building polygon"
-        $$ nest 2 (polygon poly)
-        $$ text "Candidate line segments"
-        $$ nest 2 (vcat $ map lineSeg lss)
-
-lsToPolyError (OtherError s) =
-        text "Other error while building polygon" <+> text s

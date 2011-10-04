@@ -34,6 +34,7 @@ main = do stl <- parse "cube-hole.stl"
           let faces = stlFacets stl
           let plane = Plane { planeNormal=fromList [0.0,0.0,1.0]
                             , planePoint=fromList [0,0,0] }
+
           let (bbMin, bbMax) = boundingBox stl
           print $ PP.text "Bounding Box" <+> P.vec bbMin <+> PP.text "to" <+> P.vec bbMax
           --print $ PP.vcat $ map (\f->P.face f <+> PP.text "normal:" <+> (P.vec $ faceNormal f)) faces
@@ -41,9 +42,9 @@ main = do stl <- parse "cube-hole.stl"
           let boundaries = mapMaybe (planeFaceIntersect plane) faces
           print $ PP.vcat $ map P.lineSeg boundaries
           print ""
-          print $ PP.vcat $ map (PP.braces . PP.hsep . map P.lineSeg) $ lineSegPaths boundaries
+          print $ PP.vcat $ map (PP.braces . P.polygon) $ lineSegsToPolygons boundaries
           print ""
 
-          let ps = either (error . show . P.lsToPolyError) id $ planeSlice plane faces
+          let ps = planeSlice plane faces
           print $ PP.vcat $ map P.orientedPolygon ps
           

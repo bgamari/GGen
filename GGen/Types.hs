@@ -2,6 +2,9 @@
 module GGen.Types ( Vec
                   , Point
                   , LineSeg(..)
+                  , LineSegPath
+                  , lineSegBegin
+                  , lineSegEnd
                   , Line(..)
                   , Plane(..)
                   , Face(..)
@@ -19,6 +22,11 @@ type Point = Vec
 
 -- | Line segment defined by two terminal points
 newtype LineSeg = LineSeg (Point, Point) deriving (Show, Eq)
+type LineSegPath = [LineSeg]
+
+lineSegBegin, lineSegEnd :: LineSeg -> Point
+lineSegBegin (LineSeg (a,_)) = a
+lineSegEnd (LineSeg (_,a)) = a
 
 -- | Line defined by point and direction
 newtype Line = Line (Point, Vec) deriving (Show, Eq)
