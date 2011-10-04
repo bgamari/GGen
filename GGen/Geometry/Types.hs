@@ -16,6 +16,10 @@ module GGen.Geometry.Types ( pointTol
 import Numeric.LinearAlgebra
 import Numeric.LinearAlgebra.Utils (normalize)
 
+import Test.QuickCheck
+import Numeric.LinearAlgebra.QuickCheck
+import Control.Monad (liftM2)
+
 -- | The maximum distance between identical points
 pointTol = 1e-2 :: Double
 
@@ -42,6 +46,8 @@ data LineSeg = LineSeg { lsBegin :: Point
                        , lsEnd ::Point
                        } deriving (Show, Eq)
 
+instance Arbitrary LineSeg where arbitrary = (liftM2 LineSeg) arbitrary arbitrary
+
 -- | A contiguous path of line segments
 type LineSegPath = [LineSeg]
 
@@ -50,20 +56,28 @@ data Line = Line { lPoint :: Point
                  , lDir :: Vec
                  } deriving (Show, Eq)
 
+instance Arbitrary Line where arbitrary = (liftM2 Line) arbitrary arbitrary
+
 -- | Ray defined by point and direction
 data Ray = Ray { rPoint :: Point
                , rDir :: Vec
                } deriving (Show, Eq)
+
+instance Arbitrary Ray where arbitrary = (liftM2 Ray) arbitrary arbitrary
 
 -- | Plane defined by point and normal
 data Plane = Plane { planeNormal :: Vec
                    , planePoint :: Point
                    } deriving (Show, Eq)
 
+instance Arbitrary Plane where arbitrary = (liftM2 Plane) arbitrary arbitrary
+
 -- | Face defined by normal and three vertices
 data Face = Face { faceNormal :: Point
                  , faceVertices :: (Point,Point,Point)
                  } deriving (Show, Eq)
+                 
+instance Arbitrary Face where arbitrary = (liftM2 Face) arbitrary arbitrary
 
 -- | Closed polygon defined by a series of connected points
 type Polygon = [Point]
