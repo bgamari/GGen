@@ -1,11 +1,11 @@
 module Data.STL.ASCII (parse) where
 
-import Types
 import Numeric.LinearAlgebra
 import Data.Attoparsec
 import qualified Data.Attoparsec.Char8 as C
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as BC
+import GGen.Geometry.Types
 
 data STLFile = STLFile { stlName :: String
                        , stlFacets :: [Face] }

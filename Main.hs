@@ -2,16 +2,14 @@ module Main(main) where
 
 import Data.STL.Binary
 import Numeric.LinearAlgebra
+import Numeric.LinearAlgebra.Utils (normalize)
 import Data.Maybe (mapMaybe)
 import Data.Either (either)
-import GGen.Types
 import GGen.Geometry
-import GGen.Polygon
+import GGen.Geometry.Polygon
 import qualified GGen.Pretty as P
 import qualified Text.PrettyPrint.HughesPJ as PP
 import Text.PrettyPrint.HughesPJ (($$), (<+>))
-
-normalize v = 1 / norm2 v `scale` v
 
 testMergeLineSegs = 
         do let a = LineSeg (fromList [0,0,0], fromList [0.5,0,0])

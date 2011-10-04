@@ -1,24 +1,36 @@
-
-module GGen.Types ( Vec
-                  , Point
-                  , LineSeg(..)
-                  , LineSegPath
-                  , lineSegBegin
-                  , lineSegEnd
-                  , Line(..)
-                  , Plane(..)
-                  , Face(..)
-                  , Polygon
-                  , Ray(..)
-                  ) where
+module GGen.Geometry.Types ( pointTol
+                           , dirTol
+                           , Vec
+                           , Point
+                           , samePoint
+                           , LineSeg(..)
+                           , LineSegPath
+                           , lineSegBegin
+                           , lineSegEnd
+                           , Line(..)
+                           , Plane(..)
+                           , Face(..)
+                           , Polygon
+                           , Ray(..)
+                           ) where
 
 import Numeric.LinearAlgebra
+
+-- | The maximum distance between identical points
+pointTol = 1e-4 :: Double
+
+-- | The maximum deviation from one in a dot product to consider vectors parallel
+dirTol = 1e-4 :: Double
+
 
 -- | Spatial vector
 type Vec = Vector Double
 
 -- | Spatial point
 type Point = Vec
+--
+-- | Are two points the same to within pointTol?
+samePoint a b = norm2 (a-b) < pointTol
 
 -- | Line segment defined by two terminal points
 newtype LineSeg = LineSeg (Point, Point) deriving (Show, Eq)

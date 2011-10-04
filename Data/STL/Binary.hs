@@ -1,12 +1,12 @@
 module Data.STL.Binary (parse, STLFile(..)) where
 
-import GGen.Types
 import Numeric.LinearAlgebra
 import Numeric.LinearAlgebra.Utils
 import Data.Binary.Get
 import Data.Binary.IEEE754
 import qualified Data.ByteString.Lazy as B
 import qualified Data.ByteString.Char8 as BC
+import GGen.Geometry.Types
 
 data STLFile = STLFile { stlName :: String
                        , stlFacets :: [Face] }

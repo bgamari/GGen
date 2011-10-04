@@ -2,7 +2,7 @@ module GGen.Pretty where
 
 import Numeric.LinearAlgebra
 import Text.PrettyPrint.HughesPJ as PP
-import GGen.Types
+import GGen.Geometry.Types
 
 approx :: Int -> Double -> Double
 approx places x = (realToFrac $ round $ 10^places*x) / 10^places

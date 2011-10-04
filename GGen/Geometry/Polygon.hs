@@ -1,22 +1,17 @@
-module GGen.Polygon ( lineSegPaths
-                    , lineSegsToPolygons
-                    , polygonToLineSegs
-                    , planeSlice
-                    , rayPolygonIntersects
-                    , OrientedPolygon
-                    ) where
+module GGen.Geometry.Polygon ( lineSegPaths
+                             , lineSegsToPolygons
+                             , polygonToLineSegs
+                             , planeSlice
+                             , rayPolygonIntersects
+                             , OrientedPolygon
+                             ) where
 
 import Data.List (sortBy, delete, (\\), foldl')
 import Data.Maybe (fromJust, mapMaybe, catMaybes, listToMaybe)
 import Numeric.LinearAlgebra
-import GGen.Types
-import GGen.Geometry
-
--- | The maximum distance between identical points
-pointTol = 1e-4
-
--- | The maximum deviation from one in a dot product to consider vectors parallel
-dirTol = 1e-4
+import GGen.Geometry.Types
+import GGen.Geometry.LineSeg (invertLineSeg)
+import GGen.Geometry.Intersect (rayLineSegIntersect)
 
 -- | Find contiguous paths of line segments
 lineSegPaths :: [LineSeg] -> [LineSegPath]
