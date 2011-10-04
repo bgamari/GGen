@@ -1,8 +1,10 @@
+{-# LANGUAGE TupleSections #-}
+
 module GGen.Geometry.Polygon ( lineSegPaths
                              , lineSegsToPolygons
                              , polygonToLineSegs
                              , planeSlice
-                             , rayPolygonIntersects
+                             , rayLineSegPathIntersects
                              , OrientedPolygon
                              ) where
 
@@ -11,7 +13,7 @@ import Data.Maybe (fromJust, mapMaybe, catMaybes, listToMaybe)
 import Numeric.LinearAlgebra
 import GGen.Geometry.Types
 import GGen.Geometry.LineSeg (invertLineSeg)
-import GGen.Geometry.Intersect (rayLineSegIntersect)
+import GGen.Geometry.Intersect (rayLineSegIntersect, planeFaceIntersect, planeFaceNormal)
 
 -- | Find contiguous paths of line segments
 lineSegPaths :: [LineSeg] -> [LineSegPath]
@@ -49,9 +51,8 @@ lineSegsToPolygons = map (fromJust . lineSegPathToPolygon) . lineSegPaths
 type OrientedPolygon = (Polygon, Bool)
 
 -- | Points of intersection between a ray and a polygon
-rayPolygonIntersects :: Ray -> Polygon -> [Point]
-rayPolygonIntersects ray poly =
-        mapMaybe (rayLineSegIntersect ray) $ polygonToLineSegs poly
+rayLineSegPathIntersects :: Ray -> LineSegPath -> [Point]
+rayLineSegPathIntersects ray = mapMaybe (rayLineSegIntersect ray)
 
 -- | Get line segments of polygon boundary
 polygonToLineSegs :: Polygon -> [LineSeg]
@@ -62,5 +63,17 @@ polygonToLineSegs poly@(a:b:_) = (LineSeg a b) : (polygonToLineSegs $ tail poly)
 -- In order to identify the interior of each polygon, we build a map from line
 -- segment endpoints to their corresponding faces so we can later find the normals. 
 planeSlice :: Plane -> [Face] -> [OrientedPolygon]
-planeSlice = undefined
+planeSlice plane faces =
+        let findFaceIntersect face = planeFaceIntersect plane face >>= (return . (,face))
+            boundaryMap = mapMaybe findFaceIntersect faces -- Map from line segments to faces
+            paths = lineSegPaths $ map fst boundaryMap
+            orientPath :: LineSegPath -> OrientedPolygon
+            orientPath path = let l = head path
+                                  face = fromJust $ lookup l boundaryMap
+                                  origin = lsBegin l + 0.5 `scale` (lsEnd l - lsBegin l)
+                                  normal = planeFaceNormal plane face
+                                  intersects = length $ rayLineSegPathIntersects (Ray origin normal) path
+                                  fill = intersects `mod` 2 == 1
+                              in (fromJust $ lineSegPathToPolygon path, fill)
+        in map orientPath paths
 
