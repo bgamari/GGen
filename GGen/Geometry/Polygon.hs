@@ -22,7 +22,7 @@ lineSegPaths ls = let (p,rest) = lineSegPath' ls [] True
 lineSegPath' :: [LineSeg] -> LineSegPath -> Bool -> (LineSegPath, [LineSeg])
 lineSegPath' (l:ls) [] _ = lineSegPath' ls [l] True
 lineSegPath' ls path@(p:_) canFlip =
-        let dist l = norm2 $ lineSegBegin p - lineSegEnd l
+        let dist l = norm2 $ lsBegin p - lsEnd l
             next   = listToMaybe
                    $ sortBy (\l l' -> compare (dist l) (dist l'))
                    $ filter (\l -> dist l < pointTol) ls
@@ -36,10 +36,10 @@ lineSegPathToPolygon :: LineSegPath -> Maybe Polygon
 lineSegPathToPolygon path
         | not $ samePoint begin end     = Nothing
         | otherwise                     = Just $ f path
-        where begin = lineSegBegin $ head path
-              end = lineSegEnd $ last path
-              f (p:[]) = [lineSegBegin p, lineSegEnd p]
-              f (p:path) = lineSegBegin p : f path
+        where begin = lsBegin $ head path
+              end = lsEnd $ last path
+              f (p:[]) = [lsBegin p, lsEnd p]
+              f (p:path) = lsBegin p : f path
 
 -- | Try to match up a set of line segments into a closed polygon
 lineSegsToPolygons :: [LineSeg] -> [Polygon]

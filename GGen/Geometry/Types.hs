@@ -5,8 +5,6 @@ module GGen.Geometry.Types ( pointTol
                            , samePoint
                            , LineSeg(..)
                            , LineSegPath
-                           , lineSegBegin
-                           , lineSegEnd
                            , Line(..)
                            , Plane(..)
                            , Face(..)
@@ -37,10 +35,6 @@ data LineSeg = LineSeg { lsBegin :: Point
                        , lsEnd ::Point
                        } deriving (Show, Eq)
 type LineSegPath = [LineSeg]
-
-lineSegBegin, lineSegEnd :: LineSeg -> Point
-lineSegBegin (LineSeg a _) = a
-lineSegEnd (LineSeg _ a) = a
 
 -- | Line defined by point and direction
 data Line = Line { lPoint :: Point
