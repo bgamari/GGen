@@ -12,8 +12,8 @@ import System.Random (Random)
 newtype NormalizedV a = NormalizedV a
                         deriving (Show, Eq)
 
-instance (s ~ Scalar v, Floating s, InnerSpace v, Arbitrary v) => Arbitrary (NormalizedV v) where
-        arbitrary = do a <- arbitrary
+instance (s ~ Scalar v, Num v, Ord v, Floating s, InnerSpace v, Arbitrary v) => Arbitrary (NormalizedV v) where
+        arbitrary = do NonZero a <- arbitrary
                        return $ NormalizedV $ normalized a
 
 -- | Number in [0,1]
