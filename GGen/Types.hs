@@ -1,5 +1,13 @@
 
-module GGen.Types (Vec, Point, LineSeg(..), Line(..), Plane(..), Face(..), Polygon) where
+module GGen.Types ( Vec
+                  , Point
+                  , LineSeg(..)
+                  , Line(..)
+                  , Plane(..)
+                  , Face(..)
+                  , Polygon
+                  , Ray
+                  ) where
 
 import Numeric.LinearAlgebra
 
@@ -14,6 +22,9 @@ newtype LineSeg = LineSeg (Point, Point) deriving (Show, Eq)
 
 -- | Line defined by point and direction
 newtype Line = Line (Point, Vec) deriving (Show, Eq)
+
+-- | Ray defined by point and direction
+newtype Ray = Ray (Point, Vec) deriving (Show, Eq)
 
 -- | Plane defined by point and normal
 data Plane = Plane { planeNormal :: Vec, planePoint :: Point }
