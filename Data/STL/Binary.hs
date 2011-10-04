@@ -2,6 +2,7 @@ module Data.STL.Binary (parse, STLFile(..)) where
 
 import GGen.Types
 import Numeric.LinearAlgebra
+import Numeric.LinearAlgebra.Utils
 import Data.Binary.Get
 import Data.Binary.IEEE754
 import qualified Data.ByteString.Lazy as B
@@ -16,10 +17,14 @@ vector = do x <- getFloat32le
             z <- getFloat32le
             return $ fromList $ map realToFrac [x,y,z]
 
-facet = do normal <- vector
+facet = do n <- vector
            a <- vector
            b <- vector
            c <- vector
+
+           -- Some software leaves the normal vectors zeroed
+           let normal = if norm2 n == 0 then normalize $ (b-a) `cross3` (c-a)
+                                        else n
            attrs <- getWord16le
            return $ Face { faceNormal=normal, faceVertices=(a,b,c) }
 

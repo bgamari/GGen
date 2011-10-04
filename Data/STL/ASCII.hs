@@ -14,7 +14,7 @@ data STLFile = STLFile { stlName :: String
 sstring = string . BC.pack
 
 facet = do sstring "facet normal "
-           normal <- vector
+           n <- vector
            C.skipSpace
            sstring "outer loop"
            C.skipSpace
@@ -26,6 +26,10 @@ facet = do sstring "facet normal "
            C.skipSpace
            sstring "endfacet"
            C.skipSpace
+
+           -- Some software leaves the normal vectors zeroed
+           let normal = if norm2 n == 0 then normalize $ (b-a) `cross3` (c-a)
+                                        else n
            return $ Face { faceNormal=normal
                          , faceVertices=(a,b,c) }
         where vector = do v <- count 3 (do a <- C.double
