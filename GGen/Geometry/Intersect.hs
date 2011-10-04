@@ -14,16 +14,17 @@ import Data.Maybe (mapMaybe)
 
 -- | Point of intersection between a ray and a line segment
 rayLineSegIntersect :: Ray -> LineSeg -> Maybe Point
-rayLineSegIntersect ray@(Ray u v) ls@(LineSeg a b)
-        | x `dot` y == 1  = Nothing
+rayLineSegIntersect ray@(Ray u v) l@(LineSeg a b)
+        | sameDir (lineSegDispl l) v  = 
+                -- If they are parallel, we approximate the intersection as the
+                -- center of the segment
+                if t >= 0 && t' >= 0 && t' < 1 then Just $ a + 0.5 `scale` (b-a)
+                                               else Nothing
         | otherwise       = 
-                let t' = -( (v `dot` v) `scale` (u-a) - ((u-a) `dot` v) `scale` v ) `dot` (b-a) / (v `dot` (b-a))^2
-                    t  = (a - u + t' `scale` (b-a)) `dot` v / (v `dot` v)^2
-                    r = u + t `scale` v
-                in if t >= 0 && t' >= 0 && t' < 1 then Just r
-                                                  else Nothing
-        where x = normalize $ lineSegDispl ls
-              y = normalize v
+                if t >= 0 && t' >= 0 && t' < 1 then Just (u + t `scale` v)
+                                               else Nothing
+        where t' = -( (v `dot` v) `scale` (u-a) - ((u-a) `dot` v) `scale` v ) `dot` (b-a) / (v `dot` (b-a))^2
+              t  = (a - u + t' `scale` (b-a)) `dot` v / (v `dot` v)^2
 
 -- | Test whether a point sits on a face
 -- Based upon http://softsurfer.com/Archive/algorithm_0105/algorithm_0105.htm#Segment-Triangle
