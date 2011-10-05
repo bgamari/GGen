@@ -1,7 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module GGen.Geometry.Intersect ( rayLineSegIntersect
-                               , pointOnFace
                                , faceLineIntersect
                                , planeLineSegIntersect
                                , planeFaceIntersect
@@ -9,12 +8,11 @@ module GGen.Geometry.Intersect ( rayLineSegIntersect
                                , GGen.Geometry.Intersect.runTests
                                ) where
 
-import Debug.Trace
-
 import Data.VectorSpace
 import GGen.Geometry.Types
 import GGen.Geometry.LineSeg
-import Data.Maybe (mapMaybe, isJust)
+import Data.Maybe (mapMaybe, isJust, fromJust)
+import Control.Monad (when)
 
 import Test.QuickCheck.All
 import Test.QuickCheck.Property
@@ -36,26 +34,34 @@ rayLineSegIntersect ray@(Ray u v) l@(LineSeg a b)
         where t' = -(( (v <.> v) *^ (u ^-^ a) ^-^ ((u ^-^ a) <.> v) *^ v ) <.> (b ^-^ a)) / (v <.> (b ^-^ a))^2
               t  =  ((a ^-^ u ^+^ t' *^ (b ^-^ a)) <.> v) / (v <.> v)^2
 
--- | Test whether a point sits on a face
--- Based upon http://www.cs.cornell.edu/courses/cs465/2003fa/homeworks/raytri.pdf
-pointOnFace :: Face -> Point -> Bool
-pointOnFace (Face {faceVertices=(v0,v1,v2), faceNormal=n}) p = 
-           (v1 ^-^ v0) `cross3` (p ^-^ v0) <.> n >= 0
-        && (v2 ^-^ v1) `cross3` (p ^-^ v1) <.> n >= 0
-        && (v0 ^-^ v2) `cross3` (p ^-^ v2) <.> n >= 0
-
 -- | Point of intersection between a face and a line
+-- Using Moeller, Trumbore (1997)
 faceLineIntersect :: Face -> Line -> Maybe Point
-faceLineIntersect face@(Face {faceNormal=n, faceVertices=(v0,_,_)}) line
-        | pointOnFace face p  = Just p
-        | otherwise           = Nothing
-        where p = planeLineIntersect (Plane {planeNormal=n, planePoint=v0}) line
+faceLineIntersect (Face {faceVertices=(v0,v1,v2)}) (Line {lPoint=p, lDir=d}) =
+        do let u = v1 - v0
+               v = v2 - v0
+               pp = d `cross3` v
+               det = u <.> pp
+           when (abs det < 1e-5) Nothing
+           let tt = p - v0
+               uu = (tt <.> pp) / det
+           when (uu < 0 || uu > 1) Nothing
+           let qq = tt `cross3` u
+               vv = (d <.> qq) / det
+           when (vv < 0 || uu+vv > 1) Nothing
+           let t = (v <.> qq) / det
+           return $ p ^+^ t *^ d
         
--- Find point of intersection of a plane and line
+-- | Find point of intersection of a plane and line
 planeLineIntersect :: Plane -> Line -> Point
-planeLineIntersect (Plane {planeNormal=n, planePoint=v0}) (Line {lPoint=a, lDir=m}) =
-              let lambda = (n <.> (v0 ^-^ a)) / (n <.> m)
-              in a ^+^ lambda *^ m
+planeLineIntersect plane line@(Line {lPoint=a, lDir=m}) =
+        a ^+^ m ^* planeLineIntersect' plane line
+
+-- | Find value of parameter t of the line $\vec r = \vec A*t + \vec B$ for the
+-- intersection with plane
+planeLineIntersect' :: Plane -> Line -> Double
+planeLineIntersect' (Plane {planeNormal=n, planePoint=v0}) (Line{lPoint=a, lDir=m}) =
+        (n <.> (v0 ^-^ a)) / (n <.> m)
 
 -- | Point of intersection between plane and line segment
 planeLineSegIntersect :: Plane -> LineSeg -> Maybe Point
@@ -82,35 +88,44 @@ planeFaceNormal plane face = project (planeNormal plane) (faceNormal face)
 
 -- QuickCheck properties
 
--- | Check that points on face are recognized
-prop_point_on_face :: Face -> Normalized Double -> Normalized Double -> Result
-prop_point_on_face face (Normalized x) (Normalized y)
-        | x + y > 1     = rejected
-        | otherwise     = if pointOnFace face p then succeeded
-                                                else failed
-                          where (v0,v1,v2) = faceVertices face
-                                u = v1 ^-^ v0
-                                v = v2 ^-^ v0
-                                p = v0 ^+^ x *^ u ^+^ y *^ v
+-- | Check that face-line intersections are found
+prop_face_line_intersection_hit :: Face -> NormalizedV Vec -> Normalized Double -> Result
+prop_face_line_intersection_hit face@(Face {faceVertices=(v0,v1,v2)}) (NormalizedV dir) (Normalized a) = 
+        let tol = 1e-8
+            u = v1 - v0
+            v = v2 - v0
+            a' = (1-tol) * a -- Numerical error
+            b' = (1-tol) - a'
+            hitPoint = v0 + a' *^ u + b' *^ v
+            origin = hitPoint - dir
+        in case faceLineIntersect face (Line {lPoint=origin, lDir=dir}) of
+                Just intersect -> liftBool $ magnitude (intersect - hitPoint) < 1e-5
+                Nothing        -> failed {reason="No intersection found"}
 
--- | Check that points off face are handled properly
-prop_point_off_face :: Face -> NonZero Vec -> Result
-prop_point_off_face face (NonZero v)
-        | abs (v <.> n) < 1e-10     = rejected
-        | otherwise                 = liftBool $ not $ pointOnFace face (p ^+^ v)
-        where n = faceNormal face
-              (p,_,_) = faceVertices face
+-- | Check that only intersections are found
+prop_face_line_intersection_miss :: Face -> NormalizedV Vec -> Normalized Double -> Result
+prop_face_line_intersection_miss face@(Face {faceVertices=(v0,v1,v2)}) (NormalizedV dir) (Normalized a) =
+        let tol = 1e-8
+            u = v1 - v0
+            v = v2 - v0
+            a' = (1-tol) * a
+            b' = (1-tol) * a'
+            hitPoint = v0 - a' *^ u - b' *^ v
+            origin = hitPoint - dir
+        in case faceLineIntersect face (Line {lPoint=origin, lDir=dir}) of
+                Just intersect -> failed {reason="Found non-existent intersection"}
+                Nothing        -> succeeded
 
 -- | Check that line-plane intersection point falls on plane
 prop_plane_line_intersection_on_plane :: Line -> Plane -> Bool
 prop_plane_line_intersection_on_plane line plane@(Plane n v) =
-        abs ((p ^-^ v) <.> n) < 1e-10
+        abs ((p - v) <.> n) < 1e-8
         where p = planeLineIntersect plane line
 
 -- | Check that line-plane intersection point falls on line
 prop_plane_line_intersection_on_line :: Line -> Plane -> Bool
 prop_plane_line_intersection_on_line line@(Line {lPoint=v, lDir=d}) plane = 
-        magnitude (lambda *^ d ^+^ v ^-^ p) < 1e-10
+        magnitude (lambda *^ d + v - p) < 1e-8
         where p = planeLineIntersect plane line
               lambda = (p ^-^ v) <.> d ^/ magnitudeSq d
 

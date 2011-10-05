@@ -9,6 +9,7 @@ module GGen.Geometry.Types ( pointTol
                            , Line(..)
                            , Plane(..)
                            , Face(..)
+                           , faceFromVertices
                            , Polygon
                            , Ray(..)
                            ) where

@@ -4,6 +4,6 @@ module GGen.Geometry ( module GGen.Geometry.Types
                      ) where
 
 import GGen.Geometry.Types
-import GGen.Geometry.LineSeg
-import GGen.Geometry.Intersect
+import GGen.Geometry.LineSeg hiding (runTests)
+import GGen.Geometry.Intersect hiding (runTests)
 
