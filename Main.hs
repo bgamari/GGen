@@ -25,12 +25,12 @@ boundingBox stl = let getAllVerts face = let (a,b,c) = faceVertices face
                   in ( (minimum xs, minimum ys, minimum zs)
                      , (maximum xs, maximum ys, maximum zs) )
 
-main = do stl <- Data.STL.Binary.parse "z-tensioner_1off.stl"
+main = do stl <- Data.STL.Binary.parse "cube-hole.stl"
           let faces = stlFacets stl
-          let plane = Plane { planeNormal=(0.0,0.0,1.0)
-                            , planePoint=(0,0,10) }
-
           let (bbMin, bbMax) = boundingBox stl
+          let plane = Plane { planeNormal=(0.0,0.0,1.0)
+                            , planePoint=lerp bbMin bbMax 0.5 }
+
           print $ PP.text "Bounding Box" <+> P.vec bbMin <+> PP.text "to" <+> P.vec bbMax
           --print $ PP.vcat $ map (\f->P.face f <+> PP.text "normal:" <+> (P.vec $ faceNormal f)) faces
 
