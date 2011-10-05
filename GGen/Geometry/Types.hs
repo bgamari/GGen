@@ -4,6 +4,7 @@ module GGen.Geometry.Types ( pointTol
                            , sameDir
                            , Point
                            , samePoint
+                           , Box
                            , LineSeg(..)
                            , LineSegPath
                            , Line(..)
@@ -37,6 +38,9 @@ sameDir a b = abs (normalized a <.> normalized b) - 1 < dirTol
 
 -- | Spatial point
 type Point = Vec
+
+-- | Cuboid defined by two opposite corner
+type Box = (Point, Point)
 
 -- | Are two points the same to within pointTol?
 samePoint :: Point -> Point -> Bool

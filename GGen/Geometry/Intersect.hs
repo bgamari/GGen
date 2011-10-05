@@ -8,6 +8,8 @@ module GGen.Geometry.Intersect ( rayLineSegIntersect
                                , GGen.Geometry.Intersect.runTests
                                ) where
 
+import Debug.Trace
+
 import Data.VectorSpace
 import GGen.Geometry.Types
 import GGen.Geometry.LineSeg
@@ -66,10 +68,11 @@ planeLineIntersect' (Plane {planeNormal=n, planePoint=v0}) (Line{lPoint=a, lDir=
 -- | Point of intersection between plane and line segment
 planeLineSegIntersect :: Plane -> LineSeg -> Maybe Point
 planeLineSegIntersect (Plane {planeNormal=n, planePoint=v}) (LineSeg a b)
-        | lambda < 0 = Nothing
-        | lambda > 1 = Nothing
-        | otherwise  = Just $ lerp a b lambda
-        where lambda = (n <.> (v ^-^ a)) / (n <.> (b ^-^ a))
+        | n <.> (b-a) < 1e-8  = Nothing
+        | t < 0               = Nothing
+        | t > 1               = Nothing
+        | otherwise           = Just $ lerp a b t
+        where t = (n <.> (v-a)) / (n <.> (b-a))
 
 -- | Line segment of intersection between plane and face
 planeFaceIntersect :: Plane -> Face -> Maybe LineSeg
