@@ -27,13 +27,17 @@ import Data.Cross
 
 -- | Point of intersection between a ray and a line segment
 rayLineSegIntersect :: Ray -> LineSeg -> Intersection Point
-rayLineSegIntersect ray@(Ray u v) l@(LineSeg a b)
-        | parallel d v  = if t >= 0 && t' >= 0 && t' < 1 then IDegenerate
-                                                         else INull
-        | otherwise     = if t >= 0 && t' >= 0 && t' < 1 then IIntersect (u + t *^ v)
-                                                         else INull
-        where t' = -(( (v <.> v) *^ (u - a) - ((u - a) <.> v) *^ v ) <.> (b - a)) / (v <.> (b - a))^2
-              t  =  ((a - u + t' *^ (b - a)) <.> v) / (v <.> v)^2
+rayLineSegIntersect ray@(Ray {rBegin=a, rDir=b}) l@(LineSeg u v)
+        | parallel d v  = if t >= 0 && t' >= 0 && t' <= 1 then IDegenerate
+                                                          else INull
+        | otherwise     = if t >= 0 && t' >= 0 && t' <= 1 then IIntersect (u + t' *^ v)
+                                                          else INull
+        where vv = magnitudeSq v
+              bb = magnitudeSq b
+              -- Length along line segment
+              t' = (v ^/ vv) <.> (a-u) - (b <.> (v ^/ vv)) * ((a-u) <.> (b ^/ bb))
+                   / (1 - (b <.> v)^2 / (vv*bb))
+              t  = ((t' *^ v - (a-u)) <.> b) / bb -- Length along ray
               d = trace (show t'++"\t"++show t) $ lineSegDispl l
 
 -- | Point of intersection between a face and a line
@@ -128,14 +132,18 @@ planeFaceNormal plane face =
 
 -- Properties for rayLineSegIntersect
 -- | Check that rays and line segment intersections are found
-prop_ray_line_seg_intersection_hit :: NonNull LineSeg -> NonZero Vec -> Result
-prop_ray_line_seg_intersection_hit (NonNull l@(LineSeg a b)) (NonZero v)
-        | abs (rayDir <.> lineSegDispl l) - 1 < 1e-8  = rejected
+prop_ray_line_seg_intersection_hit :: NonNull LineSeg -> Point -> Result
+prop_ray_line_seg_intersection_hit (NonNull l@(LineSeg a b)) rayBegin
+        | parallel rayDir (lineSegDispl l)   = rejected
         | otherwise = case rayLineSegIntersect (Ray {rBegin=rayBegin, rDir=rayDir}) l of
-                                IIntersect _  -> succeeded
-                                otherwise     -> failed
-        where rayBegin = a + v
-              rayDir = (lerp a b 0.5) - rayBegin
+                                IIntersect i  -> if trace (show $ g i) $ coincident i intersect
+                                                    then succeeded
+                                                    else failed {reason="Incorrect intersection"}
+                                otherwise     -> failed {reason="No intersection"}
+        where intersect = lerp a b 0.5
+              rayDir = intersect - rayBegin
+              g i = P.text "intersect" <+> P.vec intersect
+                 $$ P.text "i" <+> P.vec i
 
 -- Properties for faceLineIntersect
 -- | Check that face-line intersections are found
