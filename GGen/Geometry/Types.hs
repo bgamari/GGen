@@ -13,6 +13,7 @@ module GGen.Geometry.Types ( pointTol
                            , LineSegPath
                            , Line(..)
                            , Plane(..)
+                           , projInPlane
                            , Face(..)
                            , translateFace
                            , faceFromVertices
@@ -111,6 +112,10 @@ instance Arbitrary Ray where
 data Plane = Plane { planeNormal :: NVec
                    , planePoint :: Point
                    } deriving (Show, Eq)
+
+-- | Project a vector onto a plane
+projInPlane plane x = x - n ^* (n <.> x)
+                      where n = planeNormal plane
 
 instance Arbitrary Plane where
         arbitrary = do point <- arbitrary
