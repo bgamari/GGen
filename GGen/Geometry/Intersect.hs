@@ -27,18 +27,19 @@ import Data.Cross
 
 -- | Point of intersection between a ray and a line segment
 rayLineSegIntersect :: Ray -> LineSeg -> Intersection Point
-rayLineSegIntersect ray@(Ray {rBegin=a, rDir=b}) l@(LineSeg u v)
-        | parallel d v  = if t >= 0 && t' >= 0 && t' <= 1 then IDegenerate
+rayLineSegIntersect ray@(Ray {rBegin=u, rDir=v}) l@(LineSeg a b)
+        | parallel v m  = if t >= 0 && t' >= 0 && t' <= 1 then IDegenerate
                                                           else INull
-        | otherwise     = if t >= 0 && t' >= 0 && t' <= 1 then IIntersect (u + t' *^ v)
+        | otherwise     = if t >= 0 && t' >= 0 && t' <= 1 then IIntersect $ lerp a b t'
                                                           else INull
-        where vv = magnitudeSq v
-              bb = magnitudeSq b
+        where m = b - a
+              mm = magnitudeSq m
+              vv = magnitudeSq v
               -- Length along line segment
-              t' = (v ^/ vv) <.> (a-u) - (b <.> (v ^/ vv)) * ((a-u) <.> (b ^/ bb))
-                   / (1 - (b <.> v)^2 / (vv*bb))
-              t  = ((t' *^ v - (a-u)) <.> b) / bb -- Length along ray
-              d = trace (show t'++"\t"++show t) $ lineSegDispl l
+              t' = ((m ^/ mm) <.> (u-a) - ((u-a) <.> (v ^/ vv)) * (v <.> (m ^/ mm)))
+                   / (1 - (m <.> v)^2 / (mm*vv))
+              t  = ((t' *^ m + (a-u)) <.> v) / vv -- Length along ray
+              d = lineSegDispl l
 
 -- | Point of intersection between a face and a line
 -- Using Moeller, Trumbore (1997)
@@ -124,9 +125,9 @@ planeFaceIntersect plane face@(Face {faceVertices=(a,b,c)})
               cOnPlane = pointOnPlane plane c
 
 -- | The in-plane normal vector for the intersection between a plane and face
-planeFaceNormal :: Plane -> Face -> Vec
+planeFaceNormal :: Plane -> Face -> NVec
 planeFaceNormal plane face =
-        project (planeNormal plane) (faceNormal face)
+        normalized $ project (planeNormal plane) (faceNormal face)
 
 -- QuickCheck properties
 
@@ -136,18 +137,16 @@ prop_ray_line_seg_intersection_hit :: NonNull LineSeg -> Point -> Result
 prop_ray_line_seg_intersection_hit (NonNull l@(LineSeg a b)) rayBegin
         | parallel rayDir (lineSegDispl l)   = rejected
         | otherwise = case rayLineSegIntersect (Ray {rBegin=rayBegin, rDir=rayDir}) l of
-                                IIntersect i  -> if trace (show $ g i) $ coincident i intersect
+                                IIntersect i  -> if coincident i intersect
                                                     then succeeded
                                                     else failed {reason="Incorrect intersection"}
                                 otherwise     -> failed {reason="No intersection"}
         where intersect = lerp a b 0.5
-              rayDir = intersect - rayBegin
-              g i = P.text "intersect" <+> P.vec intersect
-                 $$ P.text "i" <+> P.vec i
+              rayDir = normalized $ intersect - rayBegin
 
 -- Properties for faceLineIntersect
 -- | Check that face-line intersections are found
-prop_face_line_intersection_hit :: Face -> NormalizedV Vec -> Normalized Double -> Result
+prop_face_line_intersection_hit :: Face -> NormalizedV NVec -> Normalized Double -> Result
 prop_face_line_intersection_hit face@(Face {faceVertices=(v0,v1,v2)}) (NormalizedV dir) (Normalized a) = 
         let tol = 1e-8
             u = v1 - v0
@@ -161,7 +160,7 @@ prop_face_line_intersection_hit face@(Face {faceVertices=(v0,v1,v2)}) (Normalize
                 INull                 -> failed {reason="No intersection found"}
 
 -- | Check that only intersections are found
-prop_face_line_intersection_miss :: Face -> NormalizedV Vec -> Normalized Double -> Result
+prop_face_line_intersection_miss :: Face -> NormalizedV NVec -> Normalized Double -> Result
 prop_face_line_intersection_miss face@(Face {faceVertices=(v0,v1,v2)}) (NormalizedV dir) (Normalized a) =
         let tol = 1e-8
             u = v1 - v0

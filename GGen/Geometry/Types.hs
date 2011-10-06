@@ -3,6 +3,7 @@
 module GGen.Geometry.Types ( pointTol
                            , dirTol
                            , Vec
+                           , NVec
                            , parallel
                            , perpendicular
                            , Point
@@ -41,8 +42,12 @@ pointTol = 1e-2 :: Double
 dirTol = 1e-3 :: Double
 
 
--- | Spatial vector
+-- | Spatial vector (e.g. direction)
 type Vec = (Double, Double, Double)
+
+-- | Unit normalized spatial vector
+-- TODO: Enforce with type system?
+type NVec = Vec
 
 -- | Are two vectors parallel (or antiparallel) to within dirTol?
 parallel :: Vec -> Vec -> Bool
@@ -84,7 +89,7 @@ type LineSegPath = [LineSeg]
 
 -- | Line defined by point and direction
 data Line = Line { lPoint :: Point
-                 , lDir :: Vec
+                 , lDir :: NVec
                  } deriving (Show, Eq)
 
 instance Arbitrary Line where
@@ -94,7 +99,7 @@ instance Arbitrary Line where
 
 -- | Ray defined by start point and direction
 data Ray = Ray { rBegin :: Point
-               , rDir :: Vec
+               , rDir :: NVec
                } deriving (Show, Eq)
 
 instance Arbitrary Ray where
@@ -103,7 +108,7 @@ instance Arbitrary Ray where
                        return $ Ray point dir
 
 -- | Plane defined by point and normal
-data Plane = Plane { planeNormal :: Vec
+data Plane = Plane { planeNormal :: NVec
                    , planePoint :: Point
                    } deriving (Show, Eq)
 
