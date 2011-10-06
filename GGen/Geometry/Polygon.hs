@@ -41,7 +41,7 @@ lineSegPath' ls path@(p:_) canFlip =
 -- | Find the polygon representing the given line segment path
 lineSegPathToPolygon :: LineSegPath -> Maybe Polygon
 lineSegPathToPolygon path
-        | not $ samePoint begin end     = Nothing
+        | not $ begin `coincident` end  = Nothing
         | otherwise                     = Just $ f path
         where begin = lsBegin $ head path
               end = lsEnd $ last path
@@ -57,7 +57,11 @@ type OrientedPolygon = (Polygon, Bool)
 
 -- | Points of intersection between a ray and a polygon
 rayLineSegPathIntersects :: Ray -> LineSegPath -> [Point]
-rayLineSegPathIntersects ray = mapMaybe (rayLineSegIntersect ray)
+rayLineSegPathIntersects ray =
+        mapMaybe (f ray)
+        where f r l  | IIntersect a <- i   = Just a
+                     | otherwise           = Nothing
+                     where i = rayLineSegIntersect r l
 
 -- | Get line segments of polygon boundary
 polygonToLineSegs :: Polygon -> [LineSeg]
@@ -70,7 +74,7 @@ polygonToLineSegs poly@(a:b:_) = (LineSeg a b) : (polygonToLineSegs $ tail poly)
 planeSlice :: Plane -> [Face] -> [OrientedPolygon]
 planeSlice plane faces =
         let findFaceIntersect face = planeFaceIntersect plane face >>= (return . (,face))
-            boundaryMap = mapMaybe findFaceIntersect faces -- Map from line segments to faces
+            boundaryMap = mapIntersection findFaceIntersect faces -- Map from line segments to faces
             -- Make sure we include flipped line segments in map
             boundaryMap' = boundaryMap ++ map (\(l,face) -> (invertLineSeg l, face)) boundaryMap
             paths = lineSegPaths $ map fst boundaryMap

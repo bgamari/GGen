@@ -1,18 +1,26 @@
+{-# LANGUAGE FlexibleInstances, TypeFamilies, UndecidableInstances, TemplateHaskell #-}
+
 module GGen.Geometry.Types ( pointTol
                            , dirTol
                            , Vec
-                           , sameDir
+                           , parallel
+                           , perpendicular
                            , Point
-                           , samePoint
+                           , coincident
                            , Box
                            , LineSeg(..)
                            , LineSegPath
                            , Line(..)
                            , Plane(..)
                            , Face(..)
+                           , translateFace
                            , faceFromVertices
                            , Polygon
                            , Ray(..)
+                           , Intersection(..)
+                           , mapIntersection
+                           , NonNull(..)
+                           , GGen.Geometry.Types.runTests
                            ) where
 
 import Data.VectorSpace
@@ -21,6 +29,10 @@ import Data.Cross
 import Test.QuickCheck
 import Data.VectorSpace.QuickCheck
 import Control.Monad (liftM, liftM2)
+import Data.Maybe (mapMaybe)
+
+import Test.QuickCheck.All
+import Test.QuickCheck.Property
 
 -- | The maximum distance between identical points
 pointTol = 1e-2 :: Double
@@ -32,9 +44,13 @@ dirTol = 1e-3 :: Double
 -- | Spatial vector
 type Vec = (Double, Double, Double)
 
--- | Are two vectors parallel to within dirTol
-sameDir :: Vec -> Vec -> Bool
-sameDir a b = abs (normalized a <.> normalized b) - 1 < dirTol
+-- | Are two vectors parallel (or antiparallel) to within dirTol?
+parallel :: Vec -> Vec -> Bool
+parallel a b = 1 - abs (normalized a <.> normalized b) < dirTol
+
+-- | Are two vectors perpendicular to within dirTol?
+perpendicular :: Vec -> Vec -> Bool
+perpendicular a b = abs (normalized a <.> normalized b) < dirTol
 
 -- | Spatial point
 type Point = Vec
@@ -43,8 +59,8 @@ type Point = Vec
 type Box = (Point, Point)
 
 -- | Are two points the same to within pointTol?
-samePoint :: Point -> Point -> Bool
-samePoint a b = magnitude (a ^-^ b) < pointTol
+coincident :: Point -> Point -> Bool
+coincident a b = magnitude (a ^-^ b) < pointTol
 
 -- | Line segment defined by two terminal points
 data LineSeg = LineSeg { lsBegin :: Point
@@ -53,6 +69,15 @@ data LineSeg = LineSeg { lsBegin :: Point
 
 instance Arbitrary LineSeg where
         arbitrary = (liftM2 LineSeg) arbitrary arbitrary
+
+newtype NonNull a = NonNull a deriving Show
+--instance (b ~ NonZero a, Arbitrary b) => Arbitrary (NonNull a) where
+--        arbitrary = do NonZero a <- arbitrary
+--                       return a
+instance Arbitrary (NonNull LineSeg) where
+        arbitrary = do a <- arbitrary
+                       NonZero d <- arbitrary
+                       return $ NonNull $ LineSeg a (a+d)
 
 -- | A contiguous path of line segments
 type LineSegPath = [LineSeg]
@@ -67,8 +92,8 @@ instance Arbitrary Line where
                        NormalizedV dir <- arbitrary
                        return $ Line point dir
 
--- | Ray defined by point and direction
-data Ray = Ray { rPoint :: Point
+-- | Ray defined by start point and direction
+data Ray = Ray { rBegin :: Point
                , rDir :: Vec
                } deriving (Show, Eq)
 
@@ -92,6 +117,9 @@ data Face = Face { faceNormal :: Point
                  , faceVertices :: (Point,Point,Point)
                  } deriving (Show, Eq)
                  
+translateFace :: Face -> Vec -> Face
+translateFace face@(Face {faceVertices=(a,b,c)}) v =
+        face { faceVertices=(a+v, b+v, c+v) }
 faceFromVertices vs@(v0,v1,v2) = let u = v1 ^-^ v0
                                      v = v2 ^-^ v1
                                  in Face (normalized $ u `cross3` v) vs
@@ -102,4 +130,38 @@ instance Arbitrary Face where
 
 -- | Closed polygon defined by a series of connected points
 type Polygon = [Point]
+
+-- | Represents the possible intersection between two bodies
+data Intersection a = IIntersect a  -- | Intersection of type a
+                    | INull         -- | No intersection
+                    | IDegenerate   -- | Degenerate case (e.g. intersection of higher dimension than a)
+                    deriving (Eq, Show)
+
+instance Monad Intersection where
+        (IIntersect a) >>= f    = f a
+        INull >>= _             = INull
+        IDegenerate >>= _       = IDegenerate
+        return a                = IIntersect a
+
+liftMaybe :: Maybe a -> Intersection a
+liftMaybe (Just a) = IIntersect a
+liftMaybe Nothing = INull
+
+mapIntersection :: (a -> Intersection b) -> [a] -> [b]
+mapIntersection f = mapMaybe g
+                    where g i = case f i of
+                                    IIntersect a   -> Just a
+                                    INull          -> Nothing
+                                    IDegenerate    -> error "Degeneracy"
+
+-- QuickCheck properties
+
+-- Properties for perpendicular
+prop_perpendicular_perp :: NonZero Vec -> NonZero Vec -> Bool
+prop_perpendicular_perp (NonZero u) (NonZero v) = perpendicular u (u `cross3` v)
+
+prop_perpendicular_par :: Vec -> Double -> Bool
+prop_perpendicular_par u a = not $ perpendicular u (u ^* a)
+
+runTests = $quickCheckAll
 

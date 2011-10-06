@@ -1,4 +1,13 @@
-module GGen.Pretty where
+module GGen.Pretty ( vec
+                   , point
+                   , lineSeg
+                   , line
+                   , plane
+                   , face
+                   , polygon
+                   , orientedPolygon
+                   , module PP
+                   ) where
 
 import Data.VectorSpace
 import Text.PrettyPrint.HughesPJ as PP
@@ -27,4 +36,6 @@ polygon p = text "polygon" <+> (hsep $ map vec p)
 
 orientedPolygon (p,True) = text "filled" <+> polygon p
 orientedPolygon (p,False) = text "unfilled" <+> polygon p
+
+intersection = undefined
 

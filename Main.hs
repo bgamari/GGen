@@ -38,7 +38,8 @@ main = do stl <- Data.STL.Binary.parse "z-tensioner_1off.stl"
           print $ PP.text "Bounding Box" <+> P.vec bbMin <+> PP.text "to" <+> P.vec bbMax
           --print $ PP.vcat $ map (\f->P.face f <+> PP.text "normal:" <+> (P.vec $ faceNormal f)) faces
 
-          let boundaries = mapMaybe (planeFaceIntersect plane) faces
+          let boundaries = mapIntersection (planeFaceIntersect plane) faces
+
           --print $ PP.vcat $ map P.lineSeg boundaries
           --print ""
           --print $ PP.vcat $ map (PP.braces . P.polygon) $ lineSegsToPolygons boundaries
@@ -48,13 +49,14 @@ main = do stl <- Data.STL.Binary.parse "z-tensioner_1off.stl"
           --print $ PP.vcat $ map P.orientedPolygon ps
 
           let region = (bbMin - 0.2*^bbSize, bbMax + 0.2*^bbSize)
-          mapM_ (\z->renderSlice faces ("slice-"++show z) region z) [0..25]
+          mapM_ (\z->renderSlice faces ("slice-"++show z++".svg") region z) [1.1..25]
 
 renderSlice :: [Face] -> FilePath -> Box -> Double -> IO ()
 renderSlice faces filename (bbMin,bbMax) z = 
-        do let plane = Plane { planeNormal=(0,0,1)
+        do print z
+           let plane = Plane { planeNormal=(0,0,1)
                              , planePoint=bbMin + (0,0,1) ^* z }
-               boundaries = mapMaybe (planeFaceIntersect plane) faces
+               boundaries = mapIntersection (planeFaceIntersect plane) faces
            renderPathsToSVG filename (500,500) (bbMin,bbMax) $ lineSegPaths boundaries
 
           

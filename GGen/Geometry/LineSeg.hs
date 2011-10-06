@@ -4,7 +4,7 @@ module GGen.Geometry.LineSeg ( invertLineSeg
                              , lineSegDispl
                              , mergeLineSegs
                              , mergeLineSegs'
-                             , runTests
+                             , GGen.Geometry.LineSeg.runTests
                              ) where
 
 import Data.List ((\\), foldl')
@@ -32,12 +32,12 @@ tryMergeLineSegs a b =
                     , (a, invertLineSeg b)
                     , (invertLineSeg a, invertLineSeg b) ]
             f (LineSeg a1 a2, LineSeg b1 b2) =
-                    if a1 `samePoint` b1 then Just $ LineSeg a2 b2
-                                         else Nothing
+                    if a1 `coincident` b1 then Just $ LineSeg a2 b2
+                                          else Nothing
             merged = mapMaybe f perms
-            parallel = sameDir (lineSegDispl a) (lineSegDispl b)
-        in if parallel && (not $ null merged) then Just $ head merged
-                                              else Nothing
+            par = parallel (lineSegDispl a) (lineSegDispl b)
+        in if par && (not $ null merged) then Just $ head merged
+                                         else Nothing
 
 -- | Merge two line segments if possible, otherwise return both segments
 mergeLineSegs :: LineSeg -> LineSeg -> [LineSeg]
