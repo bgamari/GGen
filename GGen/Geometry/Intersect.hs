@@ -78,15 +78,16 @@ planeLineIntersect' :: Plane -> Line -> Double
 planeLineIntersect' (Plane {planeNormal=n, planePoint=v0}) (Line{lPoint=a, lDir=m}) =
         (n <.> (v0 - a)) / (n <.> m)
 
-tr x = trace (show x) x
 -- | Point of intersection between plane and line segment
 planeLineSegIntersect :: Plane -> LineSeg -> Intersection Point
-planeLineSegIntersect (Plane {planeNormal=n, planePoint=v}) (LineSeg a b)
-        | perpendicular n (b-a)  = IDegenerate
-        | t < 0                  = INull
-        | t > 1                  = INull
-        | otherwise              = IIntersect $ lerp a b t
-        where t = (n <.> (v-a)) / (n <.> (b-a))
+planeLineSegIntersect plane (LineSeg a b)
+        | perpendicular n (b-a)
+          && pointOnPlane plane a  = IDegenerate
+        | t < 0                    = INull
+        | t > 1                    = INull
+        | otherwise                = IIntersect $ lerp a b t
+        where Plane {planeNormal=n, planePoint=v} = plane
+              t = (n <.> (v-a)) / (n <.> (b-a))
 
 -- | Eliminate duplicate coincident points
 nubPoints = nubBy coincident
@@ -247,9 +248,8 @@ prop_plane_face_intersect_edge_on_plane plane (NonZero a) (NonZero b) (NonZero c
                                              else succeeded
              otherwise      -> failed {reason="No intersection found"}
         where Plane {planePoint=p, planeNormal=n} = plane
-              proj x = x - n ^* (n <.> x) -- Project onto plane
-              a' = p + proj a
-              b' = p + proj b
+              a' = p + projInPlane plane a
+              b' = p + projInPlane plane b
               face = faceFromVertices (a', b', c)
 
 -- Properties for planeLineSegIntersect
@@ -258,11 +258,12 @@ prop_plane_line_seg_intersect_line_in_plane :: Plane -> NonZero Vec -> NonZero V
 prop_plane_line_seg_intersect_line_in_plane plane (NonZero a) (NonZero b) =
         case planeLineSegIntersect plane l of
              IDegenerate        -> True
-             otherwise          -> False
+             otherwise          -> trace (show $ planeLineSegIntersect plane l) False
         where Plane {planePoint=p, planeNormal=n} = plane
-              proj x = x - n ^* (n <.> x) -- Project onto plane
+              proj = projInPlane plane
               l = LineSeg (p + proj a) (p + proj b)
 
+-- | Check that non-degenerate plane-line segment intersections work
 prop_plane_line_seg_intersect_hit :: Plane -> NonZero Vec -> Result
 prop_plane_line_seg_intersect_hit plane (NonZero a)
         | perpendicular (planeNormal plane) a  = rejected
@@ -274,10 +275,16 @@ prop_plane_line_seg_intersect_hit plane (NonZero a)
         where p = planePoint plane
               l = LineSeg (p+a) (p-a)
 
--- | Check that parallel line sitting out of plane doesn't intersect
---prop_plane_line_seg_intersect_parallel_off_plane :: Plane -> NonZero Vec -> NonNull LineSeg -> Bool
---prop_plane_line_seg_intersect_parallel_off_plane plane v l =
---        where Plane {planeNormal=n
+-- | Check that line parallel to plane sitting out of plane doesn't intersect
+prop_plane_line_seg_intersect_parallel_off_plane :: Plane -> NonZero Double -> Vec -> NonZero Vec -> Result
+prop_plane_line_seg_intersect_parallel_off_plane plane (NonZero s) a (NonZero b) =
+        case planeLineSegIntersect plane l of
+             INull        -> succeeded
+             otherwise    -> trace (show $ planeLineSegIntersect plane l) failed
+        where Plane {planeNormal=n, planePoint=p} = plane
+              a' = p + n ^* s + projInPlane plane a
+              b' = a' + projInPlane plane b
+              l = LineSeg a' b'
 
 runTests = $quickCheckAll
 
