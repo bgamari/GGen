@@ -89,14 +89,13 @@ planeSlice plane faces =
                                   origin = lerp (lsBegin l) (lsEnd l) 0.5
                                   -- Normal in the plane of the slice
                                   normal = normalized $ projInPlane plane (faceNormal face)
-                                  intersects = rayLineSegPathIntersects (Ray origin normal) path
+                                  intersects = rayLineSegPathIntersects (Ray origin normal) (tail path)
+                                  fill = length intersects `mod` 2 == 1
                                   hi = P.text "origin" <+> P.point origin
                                     $$ P.text "normal" <+> P.vec normal
                                     $$ P.face face <+> P.text "with normal" <+> P.vec (faceNormal face)
                                     $$ P.text "intersects" <+> (PP.vcat $ map P.point intersects)
                                     $$ P.text ""
-                                  fill = trace (show hi)
-                                       $ length intersects `mod` 2 == 1
-                              in (fromJust $ lineSegPathToPolygon path, fill)
+                              in trace (show hi) $ (maybe (error "WTF") id $ lineSegPathToPolygon path, fill)
         in map orientPath paths
 
