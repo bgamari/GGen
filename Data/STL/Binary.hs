@@ -1,4 +1,4 @@
-module Data.STL.Binary (parse, STLFile(..)) where
+module Data.STL.Binary (parse) where
 
 import Data.VectorSpace
 import Data.Cross
@@ -6,11 +6,9 @@ import Data.Binary.Get
 import Data.Binary.IEEE754
 import qualified Data.ByteString.Lazy as B
 import qualified Data.ByteString.Char8 as BC
-import GGen.Geometry.Types
 
-data STLFile = STLFile { stlName :: String
-                       , stlFacets :: [Face] }
-                       deriving (Show, Eq)
+import Data.STL.Types
+import GGen.Geometry.Types
 
 vector = do x <- getFloat32le
             y <- getFloat32le
@@ -36,7 +34,4 @@ stlFile = do name <- getBytes 80
 parse :: FilePath -> IO STLFile
 parse filename = do a <- B.readFile filename
                     return $ runGet stlFile a
-
-main = do a <- parse "z-tensioner_1off.stl"
-          print a
 
