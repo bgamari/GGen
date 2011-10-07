@@ -2,6 +2,7 @@
 
 module GGen.Geometry.LineSeg ( invertLineSeg
                              , lineSegDispl
+                             , lineSeg2Displ
                              , mergeLineSegs
                              , mergeLineSegs'
                              , GGen.Geometry.LineSeg.runTests
@@ -23,6 +24,10 @@ invertLineSeg (LineSeg a b) = LineSeg b a
 -- | Displacement of a line segment
 lineSegDispl :: LineSeg -> Vec
 lineSegDispl (LineSeg a b) = b ^-^ a
+
+-- | Displacement of a line segment
+lineSeg2Displ :: LineSeg2 -> Vec2
+lineSeg2Displ (LineSeg2 a b) = b ^-^ a
 
 -- | Try merging two line segments
 tryMergeLineSegs :: LineSeg -> LineSeg -> Maybe LineSeg

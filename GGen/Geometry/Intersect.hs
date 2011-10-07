@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module GGen.Geometry.Intersect ( rayLineSegIntersect
+module GGen.Geometry.Intersect ( rayLineSeg2Intersect
                                , faceLineIntersect
                                , planeLineSegIntersect
                                , planeFaceIntersect
@@ -24,9 +24,9 @@ import Test.QuickCheck.Modifiers (NonZero(..))
 import Data.VectorSpace.QuickCheck
 import Data.Cross
 
--- | Point of intersection between a ray and a line segment
-rayLineSegIntersect :: Ray -> LineSeg -> Intersection Point
-rayLineSegIntersect ray@(Ray {rBegin=u, rDir=v}) l@(LineSeg a b)
+-- | Point of intersection between a ray and a line segment in two dimensions
+rayLineSeg2Intersect :: Ray2 -> LineSeg2 -> Intersection Point2
+rayLineSeg2Intersect ray@(Ray2 {r2Begin=u, r2Dir=v}) l@(LineSeg2 a b)
         | parallel v m  = if t >= 0 && t' >= 0 && t' <= 1 then IDegenerate
                                                           else INull
         | otherwise     = if t >= 0 && t' >= 0 && t' <= 1 then IIntersect $ lerp a b t'
@@ -38,7 +38,7 @@ rayLineSegIntersect ray@(Ray {rBegin=u, rDir=v}) l@(LineSeg a b)
               t' = ((m ^/ mm) <.> (u-a) - ((u-a) <.> (v ^/ vv)) * (v <.> (m ^/ mm)))
                    / (1 - (m <.> v)^2 / (mm*vv))
               t  = ((t' *^ m + (a-u)) <.> v) / vv -- Length along ray
-              d = lineSegDispl l
+              d = lineSeg2Displ l
 
 -- | Point of intersection between a face and a line
 -- Using Moeller, Trumbore (1997)
@@ -126,12 +126,12 @@ planeFaceIntersect plane face@(Face {faceVertices=(a,b,c)})
 
 -- QuickCheck properties
 
--- Properties for rayLineSegIntersect
+-- Properties for rayLineSeg2Intersect
 -- | Check that rays and line segment intersections are found
-prop_ray_line_seg_intersection_hit :: NonNull LineSeg -> Point -> Result
-prop_ray_line_seg_intersection_hit (NonNull l@(LineSeg a b)) rayBegin
-        | parallel rayDir (lineSegDispl l)   = rejected
-        | otherwise = case rayLineSegIntersect (Ray {rBegin=rayBegin, rDir=rayDir}) l of
+prop_ray_line_seg_intersection_hit :: NonNull LineSeg2 -> Point2 -> Result
+prop_ray_line_seg_intersection_hit (NonNull l@(LineSeg2 a b)) rayBegin
+        | parallel rayDir (lineSeg2Displ l)   = rejected
+        | otherwise = case rayLineSeg2Intersect (Ray2 {r2Begin=rayBegin, r2Dir=rayDir}) l of
                                 IIntersect i  -> if coincident i intersect
                                                     then succeeded
                                                     else failed {reason="Incorrect intersection"}

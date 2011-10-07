@@ -11,9 +11,6 @@ import Graphics.Rendering.Cairo
 import GGen.Geometry.Types
 import Data.VectorSpace
 
-type Vec2 = (Double, Double)
-type Point2 = Vec2
-
 -- | Rescale and center a surface of size (w,h) for region (rmin,rmax)
 rescaleForRegion :: (Double, Double) -> (Point, Point) -> Render ()
 rescaleForRegion (w,h) (rmin,rmax) = 

@@ -1,7 +1,10 @@
 {-# LANGUAGE FlexibleInstances, TypeFamilies, UndecidableInstances, TemplateHaskell #-}
 
-module GGen.Geometry.Types ( pointTol
+module GGen.Geometry.Types ( -- | General
+                             pointTol
                            , dirTol
+                           , NonNull(..)
+                             -- | Three dimensional geometry
                            , Vec
                            , NVec
                            , parallel
@@ -20,9 +23,17 @@ module GGen.Geometry.Types ( pointTol
                            , Polygon
                            , OrientedPolygon
                            , Ray(..)
+                           -- | Two dimensional geometry
+                           , Vec2
+                           , NVec2
+                           , Point2
+                           , LineSeg2(..)
+                           , LineSeg2Path
+                           , Ray2(..)
+                           -- | Polytope intersection
                            , Intersection(..)
                            , mapIntersection
-                           , NonNull(..)
+                             -- | Tests
                            , GGen.Geometry.Types.runTests
                            ) where
 
@@ -43,6 +54,13 @@ pointTol = 1e-2 :: Double
 -- | The maximum deviation from one in a dot product to consider vectors parallel
 dirTol = 1e-3 :: Double
 
+-- | For tagging values that can't have 0 measure when specifying QuickCheck Arbitrarys
+newtype NonNull a = NonNull a deriving Show
+--instance (b ~ NonZero a, Arbitrary b) => Arbitrary (NonNull a) where
+--        arbitrary = do NonZero a <- arbitrary
+--                       return a
+
+-- Three dimensional geometry
 
 -- | Spatial vector (e.g. direction)
 type Vec = (Double, Double, Double)
@@ -52,11 +70,11 @@ type Vec = (Double, Double, Double)
 type NVec = Vec
 
 -- | Are two vectors parallel (or antiparallel) to within dirTol?
-parallel :: Vec -> Vec -> Bool
+parallel :: (Scalar a ~ Double, InnerSpace a) => a -> a -> Bool
 parallel a b = 1 - abs (normalized a <.> normalized b) < dirTol
 
 -- | Are two vectors perpendicular to within dirTol?
-perpendicular :: Vec -> Vec -> Bool
+perpendicular :: (Scalar a ~ Double, InnerSpace a) => a -> a -> Bool
 perpendicular a b = abs (normalized a <.> normalized b) < dirTol
 
 -- | Spatial point
@@ -65,8 +83,8 @@ type Point = Vec
 -- | Cuboid defined by two opposite corner
 type Box = (Point, Point)
 
--- | Are two points the same to within pointTol?
-coincident :: Point -> Point -> Bool
+-- | Do two vectors identify the same point to within pointTol?
+coincident :: (Scalar a ~ Double, InnerSpace a) => a -> a -> Bool
 coincident a b = magnitude (a ^-^ b) < pointTol
 
 -- | Line segment defined by two terminal points
@@ -77,10 +95,6 @@ data LineSeg = LineSeg { lsBegin :: Point
 instance Arbitrary LineSeg where
         arbitrary = (liftM2 LineSeg) arbitrary arbitrary
 
-newtype NonNull a = NonNull a deriving Show
---instance (b ~ NonZero a, Arbitrary b) => Arbitrary (NonNull a) where
---        arbitrary = do NonZero a <- arbitrary
---                       return a
 instance Arbitrary (NonNull LineSeg) where
         arbitrary = do a <- arbitrary
                        NonZero d <- arbitrary
@@ -145,6 +159,45 @@ type Polygon = [Point]
 -- | (poly, True) refers to a polygon poly which should have its interior filled
 type OrientedPolygon = (Polygon, Bool)
 
+
+-- Two dimensional geometry
+
+-- | Spatial vector (e.g. direction)
+type Vec2 = (Double, Double)
+
+-- | Unit normalized spatial vector
+type NVec2 = Vec2
+
+-- | Spatial point
+type Point2 = Vec2
+
+-- | Line segment defined by two terminal points
+data LineSeg2 = LineSeg2 { ls2Begin :: Point2
+                         , ls2End :: Point2
+                         } deriving (Show, Eq)
+
+instance Arbitrary LineSeg2 where
+        arbitrary = (liftM2 LineSeg2) arbitrary arbitrary
+
+instance Arbitrary (NonNull LineSeg2) where
+        arbitrary = do a <- arbitrary
+                       NonZero d <- arbitrary
+                       return $ NonNull $ LineSeg2 a (a+d)
+
+-- | A contiguous path of line segments
+type LineSeg2Path = [LineSeg2]
+
+-- | Ray defined by start point and direction
+data Ray2 = Ray2 { r2Begin :: Point2
+                 , r2Dir :: NVec2
+                 } deriving (Show, Eq)
+
+instance Arbitrary Ray2 where
+        arbitrary = do point <- arbitrary
+                       NormalizedV dir <- arbitrary
+                       return $ Ray2 point dir
+
+
 -- | Represents the possible intersection between two bodies
 data Intersection a = IIntersect a  -- | Intersection of type a
                     | INull         -- | No intersection
@@ -167,6 +220,7 @@ mapIntersection f = mapMaybe g
                                     IIntersect a   -> Just a
                                     INull          -> Nothing
                                     IDegenerate    -> error "Degeneracy"
+
 
 -- QuickCheck properties
 

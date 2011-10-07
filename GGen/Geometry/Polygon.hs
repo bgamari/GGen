@@ -4,7 +4,7 @@ module GGen.Geometry.Polygon ( lineSegPaths
                              , lineSegsToPolygons
                              , polygonToLineSegs
                              , planeSlice
-                             , rayLineSegPathIntersects
+                             , rayLineSeg2PathIntersects
                              , OrientedPolygon
                              ) where
 
@@ -20,7 +20,7 @@ import Data.Maybe (fromJust, mapMaybe, catMaybes, listToMaybe)
 import Data.VectorSpace
 import GGen.Geometry.Types
 import GGen.Geometry.LineSeg (invertLineSeg)
-import GGen.Geometry.Intersect (rayLineSegIntersect, planeFaceIntersect)
+import GGen.Geometry.Intersect (rayLineSeg2Intersect, planeFaceIntersect)
 
 -- | Find contiguous paths of line segments
 lineSegPaths :: [LineSeg] -> [LineSegPath]
@@ -58,12 +58,12 @@ lineSegsToPolygons = partitionEithers . map f . lineSegPaths
 
 -- | Points of intersection between a ray and a polygon
 -- TODO: Consider degeneracies
-rayLineSegPathIntersects :: Ray -> LineSegPath -> [Point]
-rayLineSegPathIntersects ray =
+rayLineSeg2PathIntersects :: Ray2 -> LineSeg2Path -> [Point2]
+rayLineSeg2PathIntersects ray =
         mapMaybe (f ray)
         where f r l  | IIntersect a <- i   = Just a
                      | otherwise           = Nothing
-                     where i = rayLineSegIntersect r l
+                     where i = rayLineSeg2Intersect r l
 
 -- | Get line segments of polygon boundary
 polygonToLineSegs :: Polygon -> [LineSeg]
@@ -81,21 +81,26 @@ planeSlice plane faces =
             boundaryMap' = boundaryMap ++ map (\(l,face) -> (invertLineSeg l, face)) boundaryMap
             paths = lineSegPaths $ map fst boundaryMap
 
+            -- | Project vector to XY plane
+            proj (x,y,_) = (x,y)
+            projLineSeg (LineSeg a b) = LineSeg2 (proj a) (proj b)
+
             -- | Figure out whether polygon should be filled
             orientPath :: LineSegPath -> OrientedPolygon
             orientPath path = let l = head path
                                   face = maybe (error $ "Can't find face for line"++show l) id
                                        $ lookup l boundaryMap'
-                                  origin = lerp (lsBegin l) (lsEnd l) 0.5
+                                  origin = proj $ lerp (lsBegin l) (lsEnd l) 0.5
                                   -- Normal in the plane of the slice
-                                  normal = normalized $ projInPlane plane (faceNormal face)
-                                  intersects = rayLineSegPathIntersects (Ray origin normal) (tail path)
+                                  normal = normalized $ proj $ projInPlane plane (faceNormal face)
+                                  projPath = map projLineSeg $ tail path
+                                  intersects = rayLineSeg2PathIntersects (Ray2 origin normal) projPath
                                   fill = length intersects `mod` 2 == 1
-                                  hi = P.text "origin" <+> P.point origin
-                                    $$ P.text "normal" <+> P.vec normal
-                                    $$ P.face face <+> P.text "with normal" <+> P.vec (faceNormal face)
-                                    $$ P.text "intersects" <+> (PP.vcat $ map P.point intersects)
-                                    $$ P.text ""
-                              in trace (show hi) $ (maybe (error "WTF") id $ lineSegPathToPolygon path, fill)
+                                  --hi = P.text "origin" <+> P.point origin
+                                  --  $$ P.text "normal" <+> P.vec normal
+                                  --  $$ P.face face <+> P.text "with normal" <+> P.vec (faceNormal face)
+                                  --  $$ P.text "intersects" <+> (PP.vcat $ map P.point intersects)
+                                  --  $$ P.text ""
+                              in trace (show "") $ (maybe (error "WTF") id $ lineSegPathToPolygon path, fill)
         in map orientPath paths
 
