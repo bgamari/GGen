@@ -4,7 +4,6 @@ module GGen.Geometry.Intersect ( rayLineSegIntersect
                                , faceLineIntersect
                                , planeLineSegIntersect
                                , planeFaceIntersect
-                               , planeFaceNormal
                                , GGen.Geometry.Intersect.runTests
                                ) where
 
@@ -124,11 +123,6 @@ planeFaceIntersect plane face@(Face {faceVertices=(a,b,c)})
         where aOnPlane = pointOnPlane plane a
               bOnPlane = pointOnPlane plane b
               cOnPlane = pointOnPlane plane c
-
--- | The in-plane normal vector for the intersection between a plane and face
-planeFaceNormal :: Plane -> Face -> NVec
-planeFaceNormal plane face =
-        normalized $ project (planeNormal plane) (faceNormal face)
 
 -- QuickCheck properties
 

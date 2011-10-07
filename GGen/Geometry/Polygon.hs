@@ -18,7 +18,7 @@ import Data.Maybe (fromJust, mapMaybe, catMaybes, listToMaybe)
 import Data.VectorSpace
 import GGen.Geometry.Types
 import GGen.Geometry.LineSeg (invertLineSeg)
-import GGen.Geometry.Intersect (rayLineSegIntersect, planeFaceIntersect, planeFaceNormal)
+import GGen.Geometry.Intersect (rayLineSegIntersect, planeFaceIntersect)
 
 -- | Find contiguous paths of line segments
 lineSegPaths :: [LineSeg] -> [LineSegPath]
@@ -85,12 +85,14 @@ planeSlice plane faces =
                                   face = maybe (error $ "Can't find face for line"++show l) id
                                        $ lookup l boundaryMap'
                                   origin = lerp (lsBegin l) (lsEnd l) 0.5
-                                  normal = planeFaceNormal plane face
+                                  -- Normal in the plane of the slice
+                                  normal = normalized $ projInPlane plane (faceNormal face)
                                   intersects = rayLineSegPathIntersects (Ray origin normal) path
-                                  hi = PP.text "origin" <+> P.point origin
-                                    $$ PP.text "normal" <+> P.vec normal
-                                    $$ PP.text "intersects" <+> (PP.vcat $ map P.point intersects)
-                                    $$ PP.text ""
+                                  hi = P.text "origin" <+> P.point origin
+                                    $$ P.text "normal" <+> P.vec normal
+                                    $$ P.face face <+> P.text "with normal" <+> P.vec (faceNormal face)
+                                    $$ P.text "intersects" <+> (PP.vcat $ map P.point intersects)
+                                    $$ P.text ""
                                   fill = trace (show hi)
                                        $ length intersects `mod` 2 == 1
                               in (fromJust $ lineSegPathToPolygon path, fill)
