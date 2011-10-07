@@ -1,6 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module GGen.Geometry.Intersect ( rayLineSeg2Intersect
+                               , lineSegLineSeg2Intersect
                                , faceLineIntersect
                                , planeLineSegIntersect
                                , planeFaceIntersect
@@ -25,8 +26,8 @@ import Data.VectorSpace.QuickCheck
 import Data.Cross
 
 -- | Point of intersection between a ray and a line segment in two dimensions
-rayLineSeg2Intersect :: Ray2 -> LineSeg2 -> Intersection Point2
-rayLineSeg2Intersect ray@(Ray2 {r2Begin=u, r2Dir=v}) l@(LineSeg2 a b)
+rayLineSeg2Intersect :: Ray Point2 -> LineSeg Point2 -> Intersection Point2
+rayLineSeg2Intersect ray@(Ray {rBegin=u, rDir=v}) l@(LineSeg a b)
         | parallel v m  = if t >= 0 && t' >= 0 && t' <= 1 then IDegenerate
                                                           else INull
         | otherwise     = if t >= 0 && t' >= 0 && t' <= 1 then IIntersect $ lerp a b t'
@@ -38,11 +39,16 @@ rayLineSeg2Intersect ray@(Ray2 {r2Begin=u, r2Dir=v}) l@(LineSeg2 a b)
               t' = ((m ^/ mm) <.> (u-a) - ((u-a) <.> (v ^/ vv)) * (v <.> (m ^/ mm)))
                    / (1 - (m <.> v)^2 / (mm*vv))
               t  = ((t' *^ m + (a-u)) <.> v) / vv -- Length along ray
-              d = lineSeg2Displ l
+              d = lsDispl l
+
+-- | Point of intersection between two line segments in two dimensions
+lineSegLineSeg2Intersect :: LineSeg Point2 -> LineSeg Point2 -> Intersection Point2
+lineSegLineSeg2Intersect m@(LineSeg a b) n@(LineSeg c d)
+        = undefined
 
 -- | Point of intersection between a face and a line
 -- Using Moeller, Trumbore (1997)
-faceLineIntersect :: Face -> Line -> Intersection Point
+faceLineIntersect :: Face -> Line Point -> Intersection Point
 faceLineIntersect (Face {faceVertices=(v0,v1,v2)}) (Line {lPoint=p, lDir=d}) =
         do let u = v1 - v0
                v = v2 - v0
@@ -59,12 +65,12 @@ faceLineIntersect (Face {faceVertices=(v0,v1,v2)}) (Line {lPoint=p, lDir=d}) =
            return $ p + t *^ d
         
 -- | Check whether a point sits on a plane
-pointOnPlane :: Plane -> Point -> Bool
+pointOnPlane :: Plane Point -> Point -> Bool
 pointOnPlane (Plane {planePoint=v, planeNormal=n}) p =
         abs ((p-v) <.> n) < 1e-8
 
 -- | Find point of intersection of a plane and line
-planeLineIntersect :: Plane -> Line -> Intersection Point
+planeLineIntersect :: Plane Point -> Line Point -> Intersection Point
 planeLineIntersect plane line@(Line {lPoint=a, lDir=m})
         | planeNormal plane `perpendicular` m && pointOnPlane plane a =
                 IDegenerate
@@ -73,12 +79,12 @@ planeLineIntersect plane line@(Line {lPoint=a, lDir=m})
 
 -- | Find value of parameter t of the line $\vec r = \vec A*t + \vec B$ for the
 -- intersection with plane
-planeLineIntersect' :: Plane -> Line -> Double
+planeLineIntersect' :: Plane Point -> Line Point -> Double
 planeLineIntersect' (Plane {planeNormal=n, planePoint=v0}) (Line{lPoint=a, lDir=m}) =
         (n <.> (v0 - a)) / (n <.> m)
 
 -- | Point of intersection between plane and line segment
-planeLineSegIntersect :: Plane -> LineSeg -> Intersection Point
+planeLineSegIntersect :: Plane Point -> LineSeg Point -> Intersection Point
 planeLineSegIntersect plane (LineSeg a b)
         | perpendicular n (b-a)
           && pointOnPlane plane a  = IDegenerate
@@ -91,8 +97,11 @@ planeLineSegIntersect plane (LineSeg a b)
 -- | Eliminate duplicate coincident points
 nubPoints = nubBy coincident
 
+-- | Eliminate duplicate coincident points with some tolerance
+nubPointsWithTol tol = nubBy (\x y->magnitude (x,y) < tol)
+
 -- | Line segment of intersection between plane and face
-planeFaceIntersect :: Plane -> Face -> Intersection LineSeg
+planeFaceIntersect :: Plane Point -> Face -> Intersection (LineSeg Point)
 planeFaceIntersect plane face@(Face {faceVertices=(a,b,c)})
         | aOnPlane && bOnPlane && cOnPlane      = IDegenerate
         | aOnPlane && bOnPlane                  = IIntersect (LineSeg a b)
@@ -128,10 +137,10 @@ planeFaceIntersect plane face@(Face {faceVertices=(a,b,c)})
 
 -- Properties for rayLineSeg2Intersect
 -- | Check that rays and line segment intersections are found
-prop_ray_line_seg_intersection_hit :: NonNull LineSeg2 -> Point2 -> Result
-prop_ray_line_seg_intersection_hit (NonNull l@(LineSeg2 a b)) rayBegin
-        | parallel rayDir (lineSeg2Displ l)   = rejected
-        | otherwise = case rayLineSeg2Intersect (Ray2 {r2Begin=rayBegin, r2Dir=rayDir}) l of
+prop_ray_line_seg_intersection_hit :: NonNull (LineSeg Point2) -> Point2 -> Result
+prop_ray_line_seg_intersection_hit (NonNull l@(LineSeg a b)) rayBegin
+        | parallel rayDir (lsDispl l)   = rejected
+        | otherwise = case rayLineSeg2Intersect (Ray {rBegin=rayBegin, rDir=rayDir}) l of
                                 IIntersect i  -> if coincident i intersect
                                                     then succeeded
                                                     else failed {reason="Incorrect intersection"}
@@ -170,20 +179,20 @@ prop_face_line_intersection_miss face@(Face {faceVertices=(v0,v1,v2)}) (Normaliz
 
 -- Properties for planeLineIntersect
 -- | Check that line-plane intersection point falls on plane
-prop_plane_line_intersection_on_plane :: Line -> Plane -> Bool
+prop_plane_line_intersection_on_plane :: Line Point -> Plane Point -> Bool
 prop_plane_line_intersection_on_plane line plane@(Plane n v) =
         abs ((p - v) <.> n) < 1e-8
         where IIntersect p = planeLineIntersect plane line
 
 -- | Check that line-plane intersection point falls on line
-prop_plane_line_intersection_on_line :: Line -> Plane -> Bool
+prop_plane_line_intersection_on_line :: Line Point -> Plane Point -> Bool
 prop_plane_line_intersection_on_line line@(Line {lPoint=v, lDir=d}) plane = 
         magnitude (lambda *^ d + v - p) < 1e-8
         where IIntersect p = planeLineIntersect plane line
               lambda = (p - v) <.> d ^/ magnitudeSq d
 
 -- | Check that line falling on plane is degenerate
-prop_plane_line_intersection_degenerate :: Plane -> Point -> NonZero Point -> Bool
+prop_plane_line_intersection_degenerate :: Plane Point -> Point -> NonZero Point -> Bool
 prop_plane_line_intersection_degenerate plane@(Plane {planeNormal=n, planePoint=p}) a (NonZero b) =
         case planeLineIntersect plane line of
              IDegenerate        -> True
@@ -193,21 +202,21 @@ prop_plane_line_intersection_degenerate plane@(Plane {planeNormal=n, planePoint=
 
 -- Properties for pointOnPlane
 -- | Check that point on plane is recognized
-prop_point_on_plane_hit :: Plane -> Vec -> Bool
+prop_point_on_plane_hit :: Plane Point -> Vec -> Bool
 prop_point_on_plane_hit plane v =
         pointOnPlane plane (planePoint plane + v')
         where n = planeNormal plane
               v' = v - n ^* (v <.> n)
 
 -- | Check that point off plane is recognized
-prop_point_on_plane_miss :: Plane -> NonZero Vec -> Result
+prop_point_on_plane_miss :: Plane Point -> NonZero Vec -> Result
 prop_point_on_plane_miss plane@(Plane {planeNormal=n}) (NonZero v) 
         | abs (n <.> v) < 1e-8  = rejected
         | otherwise             = liftBool $ not $ pointOnPlane plane v
 
 -- Properties for planeFaceIntersect
 -- | Check that a face sitting in the plane is recognized as degenerate
-prop_plane_face_intersect_face_in_plane :: Plane -> NonZero Vec -> NonZero Vec -> NonZero Vec -> Bool
+prop_plane_face_intersect_face_in_plane :: Plane Point -> NonZero Vec -> NonZero Vec -> NonZero Vec -> Bool
 prop_plane_face_intersect_face_in_plane plane (NonZero a) (NonZero b) (NonZero c) =
         case planeFaceIntersect plane face of
              IDegenerate        -> True
@@ -219,7 +228,7 @@ prop_plane_face_intersect_face_in_plane plane (NonZero a) (NonZero b) (NonZero c
               g = ""
 
 -- | Check that a face intersection with a plane gives a line segment
-prop_plane_face_intersect_face_intersects_plane :: Plane -> NonZero Point -> NonZero Point -> NonZero Point -> Result
+prop_plane_face_intersect_face_intersects_plane :: Plane Point -> NonZero Point -> NonZero Point -> NonZero Point -> Result
 prop_plane_face_intersect_face_intersects_plane plane (NonZero a) (NonZero b) (NonZero c)
         | parallel (faceNormal face) (planeNormal plane)  = rejected
         | otherwise  =
@@ -230,11 +239,11 @@ prop_plane_face_intersect_face_intersects_plane plane (NonZero a) (NonZero b) (N
               face = faceFromVertices (a+d, b+d, c+d)
 
 -- | Check face with one edge sitting on plane
-prop_plane_face_intersect_edge_on_plane :: Plane -> NonZero Point -> NonZero Point -> NonZero Point -> Result
+prop_plane_face_intersect_edge_on_plane :: Plane Point -> NonZero Point -> NonZero Point -> NonZero Point -> Result
 prop_plane_face_intersect_edge_on_plane plane (NonZero a) (NonZero b) (NonZero c) =
         case planeFaceIntersect plane face of
-             IIntersect l   -> let d = lineSegDispl l
-                                   d' = lineSegDispl (LineSeg a' b')
+             IIntersect l   -> let d = lsDispl l
+                                   d' = lsDispl (LineSeg a' b')
                                in if 1 - abs (d <.> d') > 1e-8 
                                      then failed {reason="Line of intersection has incorrect direction"}
                                      else if abs (magnitude d - magnitude d') > 1e-8
@@ -248,7 +257,7 @@ prop_plane_face_intersect_edge_on_plane plane (NonZero a) (NonZero b) (NonZero c
 
 -- Properties for planeLineSegIntersect
 -- | Check that line sitting in plane is degenerate
-prop_plane_line_seg_intersect_line_in_plane :: Plane -> NonZero Vec -> NonZero Vec -> Bool
+prop_plane_line_seg_intersect_line_in_plane :: Plane Point -> NonZero Vec -> NonZero Vec -> Bool
 prop_plane_line_seg_intersect_line_in_plane plane (NonZero a) (NonZero b) =
         case planeLineSegIntersect plane l of
              IDegenerate        -> True
@@ -258,7 +267,7 @@ prop_plane_line_seg_intersect_line_in_plane plane (NonZero a) (NonZero b) =
               l = LineSeg (p + proj a) (p + proj b)
 
 -- | Check that non-degenerate plane-line segment intersections work
-prop_plane_line_seg_intersect_hit :: Plane -> NonZero Vec -> Result
+prop_plane_line_seg_intersect_hit :: Plane Point -> NonZero Vec -> Result
 prop_plane_line_seg_intersect_hit plane (NonZero a)
         | perpendicular (planeNormal plane) a  = rejected
         | otherwise =
@@ -270,7 +279,7 @@ prop_plane_line_seg_intersect_hit plane (NonZero a)
               l = LineSeg (p+a) (p-a)
 
 -- | Check that line parallel to plane sitting out of plane doesn't intersect
-prop_plane_line_seg_intersect_parallel_off_plane :: Plane -> NonZero Double -> Vec -> NonZero Vec -> Result
+prop_plane_line_seg_intersect_parallel_off_plane :: Plane Point -> NonZero Double -> Vec -> NonZero Vec -> Result
 prop_plane_line_seg_intersect_parallel_off_plane plane (NonZero s) a (NonZero b) =
         case planeLineSegIntersect plane l of
              INull        -> succeeded

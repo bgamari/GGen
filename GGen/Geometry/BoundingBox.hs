@@ -3,7 +3,7 @@ module GGen.Geometry.BoundingBox ( facesBoundingBox
 
 import GGen.Geometry.Types
 
-facesBoundingBox :: [Face] -> Box
+facesBoundingBox :: [Face] -> Box Point
 facesBoundingBox faces = let getAllVerts face = let (a,b,c) = faceVertices face
                                                 in [a,b,c]
                              vs = concat $ map getAllVerts faces

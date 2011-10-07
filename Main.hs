@@ -50,13 +50,14 @@ stripSuffix a b
         | a `isSuffixOf` b  = stripSuffix (init a) (init b)
         | otherwise         = Nothing
 
-renderSlice :: [Face] -> FilePath -> Box -> Double -> IO ()
+renderSlice :: [Face] -> FilePath -> Box Point -> Double -> IO ()
 renderSlice faces filename region@(rMin,rMax) z = 
         do printf "Slice Z=%1.2f\r" z
            hFlush stdout
            let plane = Plane { planeNormal=(0,0,1)
                              , planePoint=rMin + (0,0,1) ^* z }
                ps = planeSlice plane faces
-           --renderRegionToSVG filename (500,500) region (renderPolygons $ map fst ps)
-           renderRegionToSVG filename (500,500) region (renderOrientedPolygons ps)
+           renderRegionToSVG filename (500,500) region (renderPolygons2 $ map fst ps)
+           --renderRegionToSVG filename (500,500) region (renderOrientedPolygons ps)
+           return ()
 

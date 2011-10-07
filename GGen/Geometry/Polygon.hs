@@ -1,106 +1,98 @@
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TupleSections, FlexibleContexts #-}
 
 module GGen.Geometry.Polygon ( lineSegPaths
                              , lineSegsToPolygons
                              , polygonToLineSegs
                              , planeSlice
-                             , rayLineSeg2PathIntersects
                              , OrientedPolygon
                              ) where
 
 import Debug.Trace
+import System.IO.Unsafe (unsafePerformIO)
+import GGen.Render
 import qualified GGen.Pretty as P
 import qualified Text.PrettyPrint.HughesPJ as PP
 import Text.PrettyPrint.HughesPJ (($$), (<+>))
+
 import Data.Maybe (maybe)
 import Data.Either (partitionEithers)
-
 import Data.List (sortBy, delete, (\\), foldl')
 import Data.Maybe (fromJust, mapMaybe, catMaybes, listToMaybe)
 import Data.VectorSpace
+
 import GGen.Geometry.Types
-import GGen.Geometry.LineSeg (invertLineSeg)
-import GGen.Geometry.Intersect (rayLineSeg2Intersect, planeFaceIntersect)
+import GGen.Geometry.Intersect (lineSegLineSeg2Intersect, planeFaceIntersect)
+import GGen.Geometry.BoundingBox (facesBoundingBox)
 
 -- | Find contiguous paths of line segments
-lineSegPaths :: [LineSeg] -> [LineSegPath]
+lineSegPaths :: (InnerSpace p, RealFloat (Scalar p), Eq p) => [LineSeg p] -> [LineSegPath p]
 lineSegPaths [] = []
 lineSegPaths ls = let (p,rest) = lineSegPath' ls [] True
                   in p : lineSegPaths rest
 
-lineSegPath' :: [LineSeg] -> LineSegPath -> Bool -> (LineSegPath, [LineSeg])
+lineSegPath' :: (InnerSpace p, RealFloat (Scalar p), Eq p) => [LineSeg p] -> LineSegPath p -> Bool -> (LineSegPath p, [LineSeg p])
 lineSegPath' (l:ls) [] _ = lineSegPath' ls [l] True
 lineSegPath' ls path@(p:_) canFlip =
-        let dist l = magnitude $ lsBegin p ^-^ lsEnd l
+        let dist l = magnitude $ lsA p ^-^ lsB l
             next   = listToMaybe
                    $ sortBy (\l l' -> compare (dist l) (dist l'))
-                   $ filter (\l -> dist l < pointTol) ls
+                   $ filter (\l -> dist l < realToFrac pointTol) ls
         in case next of
                 Just l  -> lineSegPath' (ls \\ [l]) (l:path) True
-                Nothing -> if canFlip then lineSegPath' (map invertLineSeg ls) path False
+                Nothing -> if canFlip then lineSegPath' (map lsInvert ls) path False
                                       else (path, ls)
 
 -- | Find the polygon representing the given line segment path
-lineSegPathToPolygon :: LineSegPath -> Maybe Polygon
+lineSegPathToPolygon :: (InnerSpace p, RealFloat (Scalar p)) => LineSegPath p -> Maybe (Polygon p)
 lineSegPathToPolygon path
         | not $ begin `coincident` end  = Nothing
         | otherwise                     = Just $ f path
-        where begin = lsBegin $ head path
-              end = lsEnd $ last path
-              f (p:[]) = [lsBegin p, lsEnd p]
-              f (p:path) = lsBegin p : f path
+        where begin = lsA $ head path
+              end = lsB $ last path
+              f (p:[]) = [lsA p, lsB p]
+              f (p:path) = lsA p : f path
 
 -- | Try to match up a set of line segments into a closed polygon
 -- Returns tuple with resulting polygons and unassigned line segments
-lineSegsToPolygons :: [LineSeg] -> ([Polygon], [LineSegPath])
+lineSegsToPolygons :: (InnerSpace p, RealFloat (Scalar p), Eq p) => [LineSeg p] -> ([Polygon p], [LineSegPath p])
 lineSegsToPolygons = partitionEithers . map f . lineSegPaths
         where f path = maybe (Right path) Left $ lineSegPathToPolygon path
 
--- | Points of intersection between a ray and a polygon
--- TODO: Consider degeneracies
-rayLineSeg2PathIntersects :: Ray2 -> LineSeg2Path -> [Point2]
-rayLineSeg2PathIntersects ray =
-        mapMaybe (f ray)
-        where f r l  | IIntersect a <- i   = Just a
-                     | otherwise           = Nothing
-                     where i = rayLineSeg2Intersect r l
-
 -- | Get line segments of polygon boundary
-polygonToLineSegs :: Polygon -> [LineSeg]
+polygonToLineSegs :: Polygon Point2 -> [LineSeg Point2]
 polygonToLineSegs (_:[]) = []
 polygonToLineSegs poly@(a:b:_) = (LineSeg a b) : (polygonToLineSegs $ tail poly)
 
 -- | Try to find the boundaries sitting in a plane
--- In order to identify the interior of each polygon, we build a map from line
--- segment endpoints to their corresponding faces so we can later find the normals. 
-planeSlice :: Plane -> [Face] -> [OrientedPolygon]
+-- Assumes slice is in XY plane
+planeSlice :: Plane Point -> [Face] -> [OrientedPolygon Point2]
 planeSlice plane faces =
-        let findFaceIntersect face = planeFaceIntersect plane face >>= (return . (,face))
-            boundaryMap = mapIntersection findFaceIntersect faces -- Map from line segments to faces
-            -- Make sure we include flipped line segments in map
-            boundaryMap' = boundaryMap ++ map (\(l,face) -> (invertLineSeg l, face)) boundaryMap
-            paths = lineSegPaths $ map fst boundaryMap
+        let proj (x,y,_) = (x,y)  -- | Project vector to XY plane
+            projPolygon = map proj
+            projLineSeg (LineSeg a b) = LineSeg (proj a) (proj b)  -- | Project line segment to XY plane
+            projLineSegPath = map projLineSeg
 
-            -- | Project vector to XY plane
-            proj (x,y,_) = (x,y)
-            projLineSeg (LineSeg a b) = LineSeg2 (proj a) (proj b)
+            f :: Face -> Maybe (LineSeg Point)
+            f face = case planeFaceIntersect plane face of
+                IIntersect i  -> Just i
+                INull         -> Nothing
+                IDegenerate   -> Nothing  -- TODO: Figure this out
+            paths :: [LineSegPath Point2]
+            paths = map projLineSegPath $ lineSegPaths $ mapMaybe f faces
+
+            -- To figure out filled-ness, we project a segment from outside of the bounding box to each
+            -- of the line segment paths, counting intersections as we go
+            (bbMin, bbMax) = facesBoundingBox faces
+            origin = proj $ bbMax + lerp bbMin bbMax 0.1
 
             -- | Figure out whether polygon should be filled
-            orientPath :: LineSegPath -> OrientedPolygon
-            orientPath path = let l = head path
-                                  face = maybe (error $ "Can't find face for line"++show l) id
-                                       $ lookup l boundaryMap'
-                                  origin = proj $ lerp (lsBegin l) (lsEnd l) 0.5
-                                  -- Normal in the plane of the slice
-                                  normal = normalized $ proj $ projInPlane plane (faceNormal face)
-                                  projPath = map projLineSeg $ tail path
-                                  intersects = rayLineSeg2PathIntersects (Ray2 origin normal) projPath
+            orientPath :: LineSegPath Point2 -> OrientedPolygon Point2
+            orientPath path = let (LineSeg a b) = head path
+                                  target = lerp a b 0.5
+                                  ll = LineSeg origin target
+                                  segments = concat (paths \\ [path])
+                                  intersects = mapIntersectionDropDegen (lineSegLineSeg2Intersect ll) segments
                                   fill = length intersects `mod` 2 == 1
-                                  --hi = P.text "origin" <+> P.point origin
-                                  --  $$ P.text "normal" <+> P.vec normal
-                                  --  $$ P.face face <+> P.text "with normal" <+> P.vec (faceNormal face)
-                                  --  $$ P.text "intersects" <+> (PP.vcat $ map P.point intersects)
-                                  --  $$ P.text ""
-                              in trace (show "") $ (maybe (error "WTF") id $ lineSegPathToPolygon path, fill)
+                              in maybe (error "WTF") (,fill) $ lineSegPathToPolygon path
         in map orientPath paths
 
