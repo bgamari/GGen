@@ -52,9 +52,6 @@ lineSegPathToPolygon path
 lineSegsToPolygons :: [LineSeg] -> [Polygon]
 lineSegsToPolygons = map (fromJust . lineSegPathToPolygon) . lineSegPaths
 
--- | (poly, True) refers to a polygon poly which should have its interior filled
-type OrientedPolygon = (Polygon, Bool)
-
 -- | Points of intersection between a ray and a polygon
 rayLineSegPathIntersects :: Ray -> LineSegPath -> [Point]
 rayLineSegPathIntersects ray =

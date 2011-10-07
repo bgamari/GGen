@@ -18,6 +18,7 @@ module GGen.Geometry.Types ( pointTol
                            , translateFace
                            , faceFromVertices
                            , Polygon
+                           , OrientedPolygon
                            , Ray(..)
                            , Intersection(..)
                            , mapIntersection
@@ -140,6 +141,9 @@ instance Arbitrary Face where
 
 -- | Closed polygon defined by a series of connected points
 type Polygon = [Point]
+
+-- | (poly, True) refers to a polygon poly which should have its interior filled
+type OrientedPolygon = (Polygon, Bool)
 
 -- | Represents the possible intersection between two bodies
 data Intersection a = IIntersect a  -- | Intersection of type a
