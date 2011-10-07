@@ -12,6 +12,8 @@ import Debug.Trace
 import qualified GGen.Pretty as P
 import qualified Text.PrettyPrint.HughesPJ as PP
 import Text.PrettyPrint.HughesPJ (($$), (<+>))
+import Data.Maybe (maybe)
+import Data.Either (partitionEithers)
 
 import Data.List (sortBy, delete, (\\), foldl')
 import Data.Maybe (fromJust, mapMaybe, catMaybes, listToMaybe)
@@ -49,10 +51,13 @@ lineSegPathToPolygon path
               f (p:path) = lsBegin p : f path
 
 -- | Try to match up a set of line segments into a closed polygon
-lineSegsToPolygons :: [LineSeg] -> [Polygon]
-lineSegsToPolygons = map (fromJust . lineSegPathToPolygon) . lineSegPaths
+-- Returns tuple with resulting polygons and unassigned line segments
+lineSegsToPolygons :: [LineSeg] -> ([Polygon], [LineSegPath])
+lineSegsToPolygons = partitionEithers . map f . lineSegPaths
+        where f path = maybe (Right path) Left $ lineSegPathToPolygon path
 
 -- | Points of intersection between a ray and a polygon
+-- TODO: Consider degeneracies
 rayLineSegPathIntersects :: Ray -> LineSegPath -> [Point]
 rayLineSegPathIntersects ray =
         mapMaybe (f ray)
