@@ -1,4 +1,6 @@
 module GGen.Render ( renderPath
+                   , renderPath2
+                   , renderArrow
                    , renderPathsToSVG
                    , renderRegionToSVG
                    , renderPolygons
@@ -10,6 +12,7 @@ import Debug.Trace
 import Graphics.Rendering.Cairo
 import GGen.Geometry.Types
 import Data.VectorSpace
+import GGen.Geometry.LineSeg (lineSeg2Displ)
 
 -- | Rescale and center a surface of size (w,h) for region (rmin,rmax)
 rescaleForRegion :: (Double, Double) -> (Point, Point) -> Render ()
@@ -29,12 +32,19 @@ rescaleForRegion (w,h) (rmin,rmax) =
               s = if widthConstrained then 1/rw
                                       else 1/rh
 
+renderPath2 :: LineSeg2Path -> Render ()
+renderPath2 path = 
+        do setSourceRGB 0 0 0
+           newPath
+           mapM_ drawSegment2 $ path
+           stroke
+
 -- | Render a line segment path
 renderPath :: LineSegPath -> (Point,Point) -> Render ()
 renderPath path (rmin,rmax) =
         do setSourceRGB 0 0 0
            newPath
-           mapM_ drawSegment $ filter zClipped path
+           mapM_ drawSegment' $ filter zClipped path
            stroke
         where (_,_,maxZ) = rmax
               (_,_,minZ) = rmin
@@ -53,6 +63,21 @@ renderPath path (rmin,rmax) =
                        | az < minZ && bz < minZ  = False
                        | otherwise               = True
 
+renderArrow :: LineSeg2 -> Render ()
+renderArrow l@(LineSeg2 (ax,ay) (bx,by)) =
+        do setSourceRGBA 1 0 0 0.5
+           drawSegment2 l
+           stroke
+           let size = magnitude $ lineSeg2Displ l
+               angle = atan2 (by-ay) (bx-ax)
+               aLength = 0.15 * size
+               aAngle = 30 * pi / 180
+           moveTo bx by
+           lineTo (bx - aLength * cos (angle-aAngle)) (by - aLength * sin (angle-aAngle))
+           lineTo (bx - aLength * cos (angle+aAngle)) (by - aLength * sin (angle+aAngle))
+           lineTo bx by
+           fill 
+
 renderRegionToSVG :: FilePath -> (Double,Double) -> (Point,Point) -> Render () -> IO ()
 renderRegionToSVG filename (w,h) region action =
         withSVGSurface filename w h (flip renderWith $ do rescaleForRegion (w,h) region
@@ -66,6 +91,12 @@ renderPathsToSVG filename (w,h) region paths =
 -- | Draws a line segment
 drawSegment :: LineSeg -> Render ()
 drawSegment (LineSeg u@(ux,uy,uz) v@(vx,vy,vz)) =
+        do lineTo ux uy
+           lineTo vx vy
+
+-- | Draws a line segment
+drawSegment2 :: LineSeg2 -> Render ()
+drawSegment2 (LineSeg2 (ux,uy) (vx,vy)) =
         do lineTo ux uy
            lineTo vx vy
 
