@@ -21,20 +21,12 @@ testMergeLineSegs =
                c = LineSeg (0,0,0) (0,1,0)
            print $ P.vcat $ map P.lineSeg $ mergeLineSegs' [a,b,c]
 
-boundingBox :: STLFile -> Box
-boundingBox stl = let getAllVerts face = let (a,b,c) = faceVertices face
-                                         in [a,b,c]
-                      vs = concat $ map getAllVerts $ stlFacets stl
-                      (xs,ys,zs) = unzip3 vs
-                  in ( (minimum xs, minimum ys, minimum zs)
-                     , (maximum xs, maximum ys, maximum zs) )
-
 main = do filename:_ <- getArgs
           let root = maybe (error "Filename should end in .stl") id
                    $ stripSuffix ".stl" filename
           stl <- Data.STL.parse filename
           let faces = stlFacets stl
-          let (bbMin, bbMax) = boundingBox stl
+          let (bbMin, bbMax) = facesBoundingBox $ stlFacets stl
               bbSize = bbMax - bbMin
               (_,_,zMin) = bbMin
               (_,_,zMax) = bbMax
