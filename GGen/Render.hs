@@ -1,4 +1,8 @@
-module GGen.Render (renderPath, renderPathsToSVG) where
+module GGen.Render ( renderPath
+                   , renderPathsToSVG
+                   , renderRegionToSVG
+                   , renderPolygons
+                   ) where
 
 import Debug.Trace
 
@@ -16,6 +20,7 @@ rescaleForRegion (w,h) (rmin,rmax) =
            translate 0.5 0.5
            scale s s
            translate (-cx) (-cy)
+           setLineWidth 1e-1
         where (rminX, rminY, _) = rmin
               (rmaxX, rmaxY, _) = rmax
               (rw, rh) = (rmaxX-rminX, rmaxY-rminY)
@@ -26,10 +31,10 @@ rescaleForRegion (w,h) (rmin,rmax) =
               s = if widthConstrained then 1/rw
                                       else 1/rh
 
+-- | Render a line segment path
 renderPath :: LineSegPath -> (Point,Point) -> Render ()
 renderPath path (rmin,rmax) =
         do setSourceRGB 0 0 0
-           setLineWidth 1e-1
            newPath
            mapM_ drawSegment $ filter zClipped path
            stroke
@@ -38,21 +43,48 @@ renderPath path (rmin,rmax) =
 
               depthToAlpha z = 1
 
-              drawSegment :: LineSeg -> Render ()
-              drawSegment (LineSeg u@(ux,uy,uz) v@(vx,vy,vz)) =
+              drawSegment' :: LineSeg -> Render ()
+              drawSegment' l@(LineSeg (_,_,z) _) =
                       do -- This is only correct for lines that don't travel far in Z
-                         setSourceRGBA 0 0 0 $ depthToAlpha ((uz-minZ) / (maxZ-minZ))
-                         lineTo ux uy
-                         lineTo vx vy
+                         -- TODO: Fix
+                         --setSourceRGBA 0 0 0 $ depthToAlpha ((u-minZ) / (maxZ-minZ))
+                         drawSegment l
 
               zClipped (LineSeg (_,_,az) (_,_,bz))
                        | az > maxZ && bz > maxZ  = False
                        | az < minZ && bz < minZ  = False
                        | otherwise               = True
 
+renderRegionToSVG :: FilePath -> (Double,Double) -> (Point,Point) -> Render () -> IO ()
+renderRegionToSVG filename (w,h) region action =
+        withSVGSurface filename w h (flip renderWith $ do rescaleForRegion (w,h) region
+                                                          action
+                                                          showPage)
+
 renderPathsToSVG :: FilePath -> (Double,Double) -> (Point,Point) -> [LineSegPath] -> IO ()
 renderPathsToSVG filename (w,h) region paths =
-        withSVGSurface filename w h (flip renderWith $ do rescaleForRegion (w,h) region
-                                                          mapM_ (\path->renderPath path region) paths
-                                                          showPage)
+        renderRegionToSVG filename (w,h) region (mapM_ (\path->renderPath path region) paths)
+
+-- | Draws a line segment
+drawSegment :: LineSeg -> Render ()
+drawSegment (LineSeg u@(ux,uy,uz) v@(vx,vy,vz)) =
+        do lineTo ux uy
+           lineTo vx vy
+
+-- | Render polygons
+renderPolygons :: [Polygon] -> Render ()
+renderPolygons polys =
+        do newPath
+           setSourceRGBA 0 0 0 1
+           mapM_ drawPolygon polys
+           stroke
+
+           newPath
+           setFillRule FillRuleEvenOdd
+           setSourceRGBA 0 0 1 0.5
+           mapM_ drawPolygon polys
+           fill
+        where drawPolygon poly = do let (x,y,_) = head poly
+                                    moveTo x y
+                                    mapM_ (\(x,y,z) -> lineTo x y) poly
 
