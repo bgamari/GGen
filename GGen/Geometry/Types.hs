@@ -4,6 +4,8 @@ module GGen.Geometry.Types ( -- | General
                              pointTol
                            , dirTol
                            , NonNull(..)
+                           , nubPoints
+                           , nubPointsWithTol
                              -- | Three dimensional geometry
                            , Vec
                            , NVec
@@ -48,6 +50,7 @@ import Test.QuickCheck
 import Data.VectorSpace.QuickCheck
 import Control.Monad (liftM, liftM2)
 import Data.Maybe (mapMaybe)
+import Data.List (nubBy)
 
 import Test.QuickCheck.All
 import Test.QuickCheck.Property
@@ -109,6 +112,14 @@ type Point2 = Vec2
 
 
 -- General geometry
+
+-- | Eliminate duplicate coincident points
+nubPoints :: (InnerSpace p, RealFloat (Scalar p)) => [p] -> [p]
+nubPoints = nubBy coincident
+
+-- | Eliminate duplicate coincident points with some tolerance
+nubPointsWithTol :: (InnerSpace p, s ~ Scalar p, AdditiveGroup s, RealFloat s) => s -> [p] -> [p]
+nubPointsWithTol tol = nubBy (\x y->magnitude (x,y) < tol)
 
 -- | Are two vectors parallel (or antiparallel) to within dirTol?
 parallel :: (RealFloat (Scalar p), InnerSpace p) => p -> p -> Bool

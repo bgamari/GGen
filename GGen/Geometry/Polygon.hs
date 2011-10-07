@@ -23,6 +23,7 @@ import Data.VectorSpace
 import GGen.Geometry.Types
 import GGen.Geometry.Intersect (lineSegLineSeg2Intersect, planeFaceIntersect)
 import GGen.Geometry.BoundingBox (facesBoundingBox)
+import GGen.Geometry.LineSeg (mergeLineSegs')
 
 -- | Find contiguous paths of line segments
 lineSegPaths :: (InnerSpace p, RealFloat (Scalar p), Eq p) => [LineSeg p] -> [LineSegPath p]
@@ -77,8 +78,9 @@ planeSlice plane faces =
                 IIntersect i  -> Just i
                 INull         -> Nothing
                 IDegenerate   -> Nothing  -- TODO: Figure this out
+            lines = mapMaybe f faces
             paths :: [LineSegPath Point2]
-            paths = map projLineSegPath $ lineSegPaths $ mapMaybe f faces
+            paths = map projLineSegPath $ lineSegPaths lines
 
             -- To figure out filled-ness, we project a segment from outside of the bounding box to each
             -- of the line segment paths, counting intersections as we go

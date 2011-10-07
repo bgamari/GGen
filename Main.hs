@@ -57,7 +57,7 @@ renderSlice faces filename region@(rMin,rMax) z =
            let plane = Plane { planeNormal=(0,0,1)
                              , planePoint=rMin + (0,0,1) ^* z }
                ps = planeSlice plane faces
-           renderRegionToSVG filename (500,500) region (renderPolygons2 $ map fst ps)
-           --renderRegionToSVG filename (500,500) region (renderOrientedPolygons ps)
+           --renderRegionToSVG filename (500,500) region (renderPolygons2 $ map fst ps)
+           renderRegionToSVG filename (500,500) region (renderOrientedPolygons ps)
            return ()
 

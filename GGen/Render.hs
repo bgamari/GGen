@@ -124,22 +124,22 @@ drawPolygon poly = do moveTo x y
                       mapM_ (\(x,y,z) -> lineTo x y) poly
         where (x,y,_) = head poly
 
--- | Render polygons
-renderOrientedPolygons :: [OrientedPolygon Point] -> Render ()
+-- | Render 2D oriented polygons
+renderOrientedPolygons :: [OrientedPolygon Point2] -> Render ()
 renderOrientedPolygons polys =
         do setFillRule FillRuleEvenOdd
            newPath
            setSourceRGBA 0 0 1 0.5
-           mapM_ (drawPolygon . fst) polys
+           mapM_ (drawPolygon2 . fst) polys
            fill
 
            newPath
            setSourceRGBA 1 0 0 1
-           mapM_ (drawPolygon . fst) $ filter (\(_,fill) -> fill) polys
+           mapM_ (drawPolygon2 . fst) $ filter (\(_,fill) -> fill) polys
            stroke
 
            newPath
            setSourceRGBA 0 0 0 1
-           mapM_ (drawPolygon . fst) $ filter (\(_,fill) -> not fill) polys
+           mapM_ (drawPolygon2 . fst) $ filter (\(_,fill) -> not fill) polys
            stroke
 
