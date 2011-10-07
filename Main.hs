@@ -43,12 +43,6 @@ main = do filename:_ <- getArgs
           print $ P.text "Bounding Box" <+> P.vec bbMin <+> P.text "to" <+> P.vec bbMax
           --print $ P.vcat $ map (\f->P.face f <+> P.text "normal:" <+> (P.vec $ faceNormal f)) faces
 
-          let plane = Plane { planeNormal=(0.0,0.0,1.0)
-                            , planePoint=lerp bbMin bbMax 0.5 }
-              ps = planeSlice plane faces
-          --print $ P.vcat $ map P.orientedPolygon ps
-          renderRegionToSVG "hi.svg" (500,500) region (renderPolygons $ map fst ps)
-
           let sliceZ = 1
               nSlices = (zMax-zMin) / sliceZ
               slices = map (\i->zMin + i*sliceZ) [0..nSlices]
@@ -65,15 +59,12 @@ stripSuffix a b
         | otherwise         = Nothing
 
 renderSlice :: [Face] -> FilePath -> Box -> Double -> IO ()
-renderSlice faces filename (bbMin,bbMax) z = 
+renderSlice faces filename region@(rMin,rMax) z = 
         do printf "Slice Z=%1.2f\r" z
            hFlush stdout
            let plane = Plane { planeNormal=(0,0,1)
-                             , planePoint=bbMin + (0,0,1) ^* z }
-               boundaries = mapMaybe (f . planeFaceIntersect plane) faces
-               f l  | IIntersect l <- l = Just l
-                    | INull <- l        = Nothing
-                    | IDegenerate <- l  = Nothing -- TODO: Figure this out
-           renderPathsToSVG filename (500,500) (bbMin,bbMax) $ lineSegPaths boundaries
+                             , planePoint=rMin + (0,0,1) ^* z }
+               ps = planeSlice plane faces
+           --renderRegionToSVG filename (500,500) region (renderPolygons $ map fst ps)
+           renderRegionToSVG filename (500,500) region (renderOrientedPolygons ps)
 
-          

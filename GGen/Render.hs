@@ -2,6 +2,7 @@ module GGen.Render ( renderPath
                    , renderPathsToSVG
                    , renderRegionToSVG
                    , renderPolygons
+                   , renderOrientedPolygons
                    ) where
 
 import Debug.Trace
@@ -20,7 +21,7 @@ rescaleForRegion (w,h) (rmin,rmax) =
            translate 0.5 0.5
            scale s s
            translate (-cx) (-cy)
-           setLineWidth 1e-1
+           setLineWidth 4e-1
         where (rminX, rminY, _) = rmin
               (rmaxX, rmaxY, _) = rmax
               (rw, rh) = (rmaxX-rminX, rmaxY-rminY)
@@ -75,16 +76,38 @@ drawSegment (LineSeg u@(ux,uy,uz) v@(vx,vy,vz)) =
 renderPolygons :: [Polygon] -> Render ()
 renderPolygons polys =
         do newPath
-           setSourceRGBA 0 0 0 1
-           mapM_ drawPolygon polys
-           stroke
-
-           newPath
            setFillRule FillRuleEvenOdd
            setSourceRGBA 0 0 1 0.5
            mapM_ drawPolygon polys
            fill
-        where drawPolygon poly = do let (x,y,_) = head poly
-                                    moveTo x y
-                                    mapM_ (\(x,y,z) -> lineTo x y) poly
+
+           newPath
+           setSourceRGBA 0 0 0 1
+           mapM_ drawPolygon polys
+           stroke
+
+-- | Draw a polygon path
+drawPolygon :: Polygon -> Render ()
+drawPolygon poly = do moveTo x y
+                      mapM_ (\(x,y,z) -> lineTo x y) poly
+        where (x,y,_) = head poly
+
+-- | Render polygons
+renderOrientedPolygons :: [OrientedPolygon] -> Render ()
+renderOrientedPolygons polys =
+        do setFillRule FillRuleEvenOdd
+           newPath
+           setSourceRGBA 0 0 1 0.5
+           mapM_ (drawPolygon . fst) polys
+           fill
+
+           newPath
+           setSourceRGBA 1 0 0 1
+           mapM_ (drawPolygon . fst) $ filter (\(_,fill) -> fill) polys
+           stroke
+
+           newPath
+           setSourceRGBA 0 0 0 1
+           mapM_ (drawPolygon . fst) $ filter (\(_,fill) -> not fill) polys
+           stroke
 
