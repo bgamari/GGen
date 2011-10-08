@@ -37,11 +37,10 @@ mergeLineSegs a b = maybe [a,b] (replicate 1) $ tryMergeLineSegs a b
 mergeLineSegIntoList :: (InnerSpace p, Eq p, RealFloat (Scalar p)) => [LineSeg p] -> LineSeg p -> [LineSeg p]
 mergeLineSegIntoList ls l =
         let tryMerge l' = do new <- tryMergeLineSegs l l'
-                             return (new, ls \\ [l])
+                             return $ new:(ls \\ [l])
             tries = mapMaybe tryMerge ls
-            (lMerged, ls') = head tries
         in if null tries then l:ls
-                         else lMerged:ls'
+                         else head tries
 
 -- | Merge line segments in a list
 mergeLineSegs' :: (InnerSpace p, Eq p, RealFloat (Scalar p)) => [LineSeg p] -> [LineSeg p]
