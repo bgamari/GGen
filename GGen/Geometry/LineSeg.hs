@@ -5,7 +5,7 @@ module GGen.Geometry.LineSeg ( mergeLineSegs
                              , GGen.Geometry.LineSeg.runTests
                              ) where
 
-import Data.List ((\\), foldl')
+import Data.List (deleteFirstsBy, foldl')
 import Data.Maybe (mapMaybe, isJust, fromJust)
 import Data.VectorSpace
 import GGen.Geometry.Types
@@ -40,7 +40,7 @@ mergeLineSegs a b = maybe [a,b] (replicate 1) $ tryMergeLineSegs a b
 mergeLineSegIntoList :: (InnerSpace p, Eq p, RealFloat (Scalar p), Show p) => [LineSeg p] -> LineSeg p -> [LineSeg p]
 mergeLineSegIntoList ls l =
         let tryMerge l' = do new <- tryMergeLineSegs l l'
-                             return $ new:(ls \\ [l'])
+                             return $ new:(deleteFirstsBy approx ls [l'])
             tries = mapMaybe tryMerge ls
         in if null tries then l:ls
                          else head tries

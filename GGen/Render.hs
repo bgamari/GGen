@@ -11,8 +11,6 @@ module GGen.Render ( renderPath
                    , drawSegment2
                    ) where
 
-import Debug.Trace
-
 import Graphics.Rendering.Cairo
 import GGen.Geometry.Types
 import Data.VectorSpace
@@ -118,14 +116,16 @@ renderPolygons2 polys =
 
 -- | Draw a 2D polygon
 drawPolygon2 :: Polygon Point2 -> Render ()
-drawPolygon2 poly = do (uncurry moveTo) $ head poly
-                       mapM_ (uncurry lineTo) poly
+drawPolygon2 (Polygon points) = do (uncurry moveTo) $ head points
+                                   mapM_ (uncurry lineTo) points
+                                   (uncurry lineTo) $ head points
 
 -- | Draw a polygon path
 drawPolygon :: Polygon Point -> Render ()
-drawPolygon poly = do moveTo x y
-                      mapM_ (\(x,y,z) -> lineTo x y) poly
-        where (x,y,_) = head poly
+drawPolygon (Polygon points) = do moveTo x y
+                                  mapM_ (\(x,y,z) -> lineTo x y) points
+                                  lineTo x y
+        where (x,y,_) = head points
 
 -- | Render 2D oriented polygons
 renderOrientedPolygons :: [OrientedPolygon Point2] -> Render ()
@@ -138,11 +138,11 @@ renderOrientedPolygons polys =
 
            newPath
            setSourceRGBA 1 0 0 1
-           mapM_ (drawPolygon2 . fst) $ filter (\(_,fill) -> fill) polys
+           mapM_ (drawPolygon2 . fst) $ filter (\(_,hand) -> hand==RightHanded) polys
            stroke
 
            newPath
            setSourceRGBA 0 0 0 1
-           mapM_ (drawPolygon2 . fst) $ filter (\(_,fill) -> not fill) polys
+           mapM_ (drawPolygon2 . fst) $ filter (\(_,hand) -> hand==LeftHanded) polys
            stroke
 

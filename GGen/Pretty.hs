@@ -23,10 +23,10 @@ instance Vector Vec where
 instance Vector Vec2 where
         vec (x,y) = parens $ hcat $ punctuate (text ", ") $ map approxDouble [x,y]
 
-approx :: Int -> Double -> Double
-approx places x = (realToFrac $ round $ 10^places*x) / 10^places
+approximate :: Int -> Double -> Double
+approximate places x = (realToFrac $ round $ 10^places*x) / 10^places
 
-approxDouble = PP.double . approx 2
+approxDouble = PP.double . approximate 2
 
 lineSeg (LineSeg a b) = text "segment" <+> vec a <+> text "--" <+> vec b
 

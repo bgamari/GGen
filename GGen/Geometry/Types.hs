@@ -1,8 +1,10 @@
-{-# LANGUAGE FlexibleContexts, FlexibleInstances, TypeFamilies, UndecidableInstances, TemplateHaskell #-}
+{-# LANGUAGE FlexibleContexts, FlexibleInstances, TypeFamilies, UndecidableInstances, TemplateHaskell
+           , TypeSynonymInstances #-}
 
 module GGen.Geometry.Types ( -- | General
                              pointTol
                            , dirTol
+                           , ApproxEq(..)
                            , NonNull(..)
                            , nubPoints
                            , nubPointsWithTol
@@ -30,7 +32,8 @@ module GGen.Geometry.Types ( -- | General
                            , Ray(..)
                            , Plane(..)
                            , projInPlane
-                           , Polygon
+                           , Hand(..)
+                           , Polygon(..)
                            , OrientedPolygon
                            -- | Polytope intersection
                            , Intersection(..)
@@ -67,11 +70,15 @@ newtype NonNull a = NonNull a deriving Show
 --        arbitrary = do NonZero a <- arbitrary
 --                       return a
 
+class ApproxEq a where
+        approx :: a -> a -> Bool
 
 -- Three dimensional geometry
 
 -- | Spatial vector (e.g. direction)
 type Vec = (Double, Double, Double)
+
+instance ApproxEq Vec where approx = coincident
 
 -- | Unit normalized spatial vector
 -- TODO: Enforce with type system?
@@ -104,6 +111,8 @@ instance Arbitrary Face where
 -- | Spatial vector (e.g. direction)
 type Vec2 = (Double, Double)
 
+instance ApproxEq Vec2 where approx = coincident
+
 -- | Unit normalized spatial vector
 type NVec2 = Vec2
 
@@ -120,6 +129,11 @@ nubPoints = nubBy coincident
 -- | Eliminate duplicate coincident points with some tolerance
 nubPointsWithTol :: (InnerSpace p, s ~ Scalar p, AdditiveGroup s, RealFloat s) => s -> [p] -> [p]
 nubPointsWithTol tol = nubBy (\x y->magnitude (x,y) < tol)
+
+-- | Are two vectors strictly parallel to within dirTol?
+sameDir :: (RealFloat (Scalar p), InnerSpace p) => p -> p -> Bool
+sameDir a b = 0 <= dot && dot < realToFrac dirTol
+        where dot = 1 - normalized a <.> normalized b
 
 -- | Are two vectors parallel (or antiparallel) to within dirTol?
 parallel :: (RealFloat (Scalar p), InnerSpace p) => p -> p -> Bool
@@ -139,7 +153,10 @@ type Box p = (p, p)
 -- | Line segment defined by two terminal points
 data LineSeg p = LineSeg { lsA :: p
                          , lsB :: p
-                         } deriving (Show, Eq)
+                         } deriving (Show)
+
+instance (InnerSpace p, RealFloat (Scalar p)) => ApproxEq (LineSeg p) where
+        u `approx` v  = lsA u `coincident` lsA v && lsB u `coincident` lsB v
 
 -- | Invert the order of line segment termini
 lsInvert :: LineSeg p -> LineSeg p
@@ -160,10 +177,16 @@ instance (Arbitrary p, Ord p, Num p, VectorSpace p) => Arbitrary (NonNull (LineS
 -- | A contiguous path of line segments
 type LineSegPath p = [LineSeg p]
 
+instance (InnerSpace p, RealFloat (Scalar p)) => ApproxEq (LineSegPath p) where
+        u `approx` v  = and $ zipWith approx u v
+
 -- | Line defined by point and direction
 data Line p = Line { lPoint :: p
                    , lDir :: p -- Normalized
-                   } deriving (Show, Eq)
+                   } deriving (Show)
+
+instance (InnerSpace p, RealFloat (Scalar p)) => ApproxEq (Line p) where
+        u `approx` v  = lPoint u `coincident` lPoint v && lDir u `parallel` lDir v
 
 instance (Scalar p ~ s, Floating s, Arbitrary p, Ord p, Num p, InnerSpace p) => Arbitrary (Line p) where
         arbitrary = do point <- arbitrary
@@ -173,7 +196,10 @@ instance (Scalar p ~ s, Floating s, Arbitrary p, Ord p, Num p, InnerSpace p) => 
 -- | Ray defined by start point and direction
 data Ray p = Ray { rBegin :: p
                  , rDir :: p -- Normalized
-                 } deriving (Show, Eq)
+                 } deriving (Show)
+
+instance (InnerSpace p, RealFloat (Scalar p)) => ApproxEq (Ray p) where
+        u `approx` v  = rBegin u `coincident` rBegin v && rDir u `sameDir` rDir v
 
 instance (Scalar p ~ s, Floating s, Arbitrary p, Ord p, Num p, InnerSpace p) => Arbitrary (Ray p) where
         arbitrary = do point <- arbitrary
@@ -185,21 +211,37 @@ data Plane p = Plane { planeNormal :: p -- Normalized
                      , planePoint :: p
                      } deriving (Show, Eq)
 
+instance (InnerSpace p, RealFloat (Scalar p)) => ApproxEq (Plane p) where
+        u `approx` v  = planeNormal u `parallel` planeNormal v && planePoint u `coincident` planePoint v
+
 -- | Project a vector onto a plane
 projInPlane :: (Num p, InnerSpace p) => Plane p -> p -> p
 projInPlane plane x = x - n ^* (n <.> x)
                       where n = planeNormal plane
 
-instance (Scalar p ~ s, Floating s, Arbitrary p, Ord p, Num p, InnerSpace p) => Arbitrary (Plane p) where
+instance (Arbitrary p, Ord p, Num p, InnerSpace p, Floating (Scalar p)) => Arbitrary (Plane p) where
         arbitrary = do point <- arbitrary
                        NormalizedV normal <- arbitrary
                        return $ Plane {planeNormal=normal, planePoint=point}
 
 -- | Closed polygon defined by a series of connected points
-type Polygon p = [p]
+-- The point list should not be closed (i.e. head p /= last p)
+newtype Polygon p = Polygon [p] deriving (Show, Eq)
 
--- | (poly, True) refers to a polygon poly which should have its interior filled
-type OrientedPolygon p = (Polygon p, Bool)
+instance (InnerSpace p, RealFloat (Scalar p)) => ApproxEq (Polygon p) where
+        (Polygon u) `approx` (Polygon v)  = and $ zipWith coincident u v
+
+instance (s ~ Scalar p, Floating s, Arbitrary p, InnerSpace p, Ord p, Num p) => Arbitrary (Polygon p) where
+        arbitrary = do let unNonZero (NonZero a) = a
+                       points <- (liftM $ map unNonZero) arbitrary
+                       return $ Polygon $ points++[head points]
+
+-- | Right- or left-handedness
+data Hand = LeftHanded | RightHanded deriving (Show, Eq)
+
+-- A polygon with points in clockwise order. The associated handedness reflects
+-- on which side of an edge the normal will be found.
+type OrientedPolygon p = (Polygon p, Hand)
 
 
 -- Polytope intersection

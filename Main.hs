@@ -5,7 +5,7 @@ module Main(main) where
 import Data.VectorSpace
 import Data.Maybe (mapMaybe, maybe)
 import Data.Either (either, partitionEithers)
-import Data.List (isSuffixOf, (\\))
+import Data.List (isSuffixOf, deleteFirstsBy)
 import Text.Printf
 import System.IO
 import System.Environment (getArgs)
@@ -34,7 +34,7 @@ main = do filename:_ <- getArgs
           print $ P.text "Bounding Box" <+> P.vec bbMin <+> P.text "to" <+> P.vec bbMax
           --print $ P.vcat $ map (\f->P.face f <+> P.text "normal:" <+> (P.vec $ faceNormal f)) faces
           
-          testSlice faces region ((zMax-zMin)/2)
+          --testSlice faces region ((zMax-zMin)/2)
 
           let sliceZ = 1
               nSlices = (zMax-zMin) / sliceZ
@@ -54,35 +54,27 @@ testSlice faces region z =
                              , planePoint=bbMin + (0,0,1) ^* z }
                lines = mapIntersectionDropDegen (planeFaceIntersect plane) faces 
                paths = lineSegPaths $ mergeLineSegList $ map projLineSeg lines
-           --renderRegionToSVG "hi.svg" (500,500) region (mapM_ (\l->drawSegment2 (projLineSeg l) >> stroke) $ mergeLineSegList lines)
+               pps = mapMaybe (\path->do poly <- lineSegPathToPolygon path
+                                         return (poly,path)
+                              ) paths
 
            let origin = proj $ bbMax + (bbMax-bbMin) ^* 0.1
-               orientPath :: LineSegPath Point2 -> IO (Either (LineSegPath Point2, LineSeg Point2) (OrientedPolygon Point2, LineSeg Point2, [Point2]))
-               orientPath path = do let (LineSeg a b) = head path
-                                        target = lerp a b 0.5
-                                        ll = LineSeg origin target
-                                        segments = concat (paths \\ [path])
-                                        intersects = mapIntersectionDropDegen (lineSegLineSeg2Intersect ll) segments
-                                        fill = length intersects `mod` 2 == 1
-                                    return $ case lineSegPathToPolygon path of
-                                                  Just poly -> Right ((poly, fill), ll, intersects)
-                                                  Nothing   -> Left (path, ll)
+               render (r,g,b) path = 
+                        do setSourceRGBA r g b 0.5
+                           renderPath2 path
+                           let LineSeg a b = head path
+                               ll = LineSeg origin $ lerp a b 0.5
+                               inters = mapIntersection (lineSegLineSeg2Intersect ll)
+                                        $ concat (deleteFirstsBy approx paths [path])
 
-           (fails, polys) <- liftM partitionEithers $ mapM orientPath paths
+                           newPath
+                           drawSegment2 ll
+                           stroke
 
-           let render = do renderOrientedPolygons $ map (\(a,b,c)->a) polys
-                           mapM_ (\(poly,ll,inters) -> do setSourceRGBA 0 0 1 0.5
-                                                          newPath
-                                                          drawSegment2 ll
-                                                          stroke
+                           mapM_ (\(x,y)->arc x y 1 0 (2*pi) >> fill) inters
 
-                                                          setSourceRGBA 0 1 0 0.5
-                                                          mapM_ (\i->arc (fst i) (snd i) 1 0 (2*pi) >> fill) inters
-                                 ) polys
-
-                           setSourceRGBA 1 1 0 0.5
-                           mapM_ (\(path,ll) -> renderPath2 path) fails
-           renderRegionToSVG "hi.svg" (500,500) region render
+           renderRegionToSVG "hi.svg" (500,500) region (do mapM_ ((render (0,1,0)).snd) pps
+                                                           mapM_ ((render (1,0,0)).polygonToLineSegs.fst) pps)
 
            return ()
 
