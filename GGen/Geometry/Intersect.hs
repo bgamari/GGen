@@ -50,7 +50,7 @@ lineSegLineSeg2Intersect u@(LineSeg ua ub) v@(LineSeg va vb)
               n = lsDispl v
               nn = magnitudeSq n
               -- Length along line segment v
-              tv = ((m ^/ mm) <.> (ua-va) - ((ua-va) <.> (n ^/ nn)) * (n <.> (m ^/ mm)))
+              tv = ((m ^/ mm) <.> (va-ua) + ((ua-va) <.> (n ^/ nn)) * (n <.> (m ^/ mm)))
                    / (1 - (m <.> n)^2 / (mm*nn))
               tu = ((tv *^ m + (ua-va)) <.> n) / nn -- Length along line segment u
               a = tu >= 0 && tv <= 1 && tv >= 0 && tv <= 1
@@ -123,7 +123,7 @@ planeFaceIntersect plane face@(Face {faceVertices=(a,b,c)})
                         3         -> IDegenerate
                         otherwise -> error (show $ P.text "Error while finding plane-face intersection:"
                                                 $$ P.text "Unexpected number of intersections"
-                                                $$ P.nest 2 (P.vcat $ map P.point lineIntersects)
+                                                $$ P.nest 2 (P.vcat $ map P.vec lineIntersects)
                                                 $$ P.text "Face: " $$ P.nest 2 (P.face face)
                                                 $$ P.text "Plane: " $$ P.nest 2 (P.plane plane))
         where aOnPlane = pointOnPlane plane a
@@ -133,7 +133,7 @@ planeFaceIntersect plane face@(Face {faceVertices=(a,b,c)})
 -- QuickCheck properties
 
 -- Properties for rayLineSeg2Intersect
--- | Check that rays and line segment intersections are found
+-- | Check that ray-line segment intersections are found
 prop_ray_line_seg2_intersection_hit :: NonNull (LineSeg Point2) -> Point2 -> Result
 prop_ray_line_seg2_intersection_hit (NonNull l@(LineSeg a b)) rayBegin
         | parallel rayDir (lsDispl l)   = rejected
@@ -146,17 +146,18 @@ prop_ray_line_seg2_intersection_hit (NonNull l@(LineSeg a b)) rayBegin
               rayDir = normalized $ intersect - rayBegin
 
 -- Properties for lineSegLineSeg2Intersect
--- | Check that rays and line segment intersections are found
+-- | Check that line segment-line segment intersections are found
 prop_line_seg_line_seg2_intersection_hit :: NonNull (LineSeg Point2) -> Point2 -> Result
-prop_line_seg_line_seg2_intersection_hit (NonNull l@(LineSeg a b)) rayBegin
-        | parallel rayDir (lsDispl l)   = rejected
-        | otherwise = case rayLineSeg2Intersect (Ray {rBegin=rayBegin, rDir=rayDir}) l of
+prop_line_seg_line_seg2_intersection_hit (NonNull l@(LineSeg a b)) v
+        | parallel (lsDispl l) (lsDispl l')   = rejected
+        | otherwise = case lineSegLineSeg2Intersect l l' of
                                 IIntersect i  -> if coincident i intersect
                                                     then succeeded
                                                     else failed {reason="Incorrect intersection"}
-                                otherwise     -> failed {reason="No intersection"}
+                                otherwise     -> trace (show $ P.lineSeg l <+> P.lineSeg l')
+                                               $ failed {reason="No intersection"}
         where intersect = lerp a b 0.5
-              rayDir = normalized $ intersect - rayBegin
+              l' = LineSeg {lsA=v, lsB=2 *^ intersect - v}
 
 -- Properties for faceLineIntersect
 -- | Check that face-line intersections are found
