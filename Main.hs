@@ -34,8 +34,6 @@ main = do filename:_ <- getArgs
           print $ P.text "Bounding Box" <+> P.vec bbMin <+> P.text "to" <+> P.vec bbMax
           --print $ P.vcat $ map (\f->P.face f <+> P.text "normal:" <+> (P.vec $ faceNormal f)) faces
           
-          --testSlice faces region ((zMax-zMin)/2)
-
           let sliceZ = 1
               nSlices = (zMax-zMin) / sliceZ
               slices = map (\i->zMin + i*sliceZ) [0..nSlices]
@@ -43,41 +41,6 @@ main = do filename:_ <- getArgs
           mapM_ (\z->renderSlice faces (sliceFilename z) region z) slices
 
           return()
-
-proj (x,y,z) = (x,y)
-projLineSeg (LineSeg a b) = LineSeg (proj a) (proj b)  -- | Project line segment to XY plane
-
-testSlice :: [Face] -> Box Point -> Double -> IO ()
-testSlice faces region z =
-        do let (bbMin, bbMax) = region
-               plane = Plane { planeNormal=(0,0,1)
-                             , planePoint=bbMin + (0,0,1) ^* z }
-               lines = mapIntersectionDropDegen (planeFaceIntersect plane) faces 
-               paths = lineSegPaths $ mergeLineSegList $ map projLineSeg lines
-               pps = mapMaybe (\path->do poly <- lineSegPathToPolygon path
-                                         return (poly,path)
-                              ) paths
-
-           let origin = proj $ bbMax + (bbMax-bbMin) ^* 0.1
-               render (r,g,b) path = 
-                        do setSourceRGBA r g b 0.5
-                           renderPath2 path
-                           let LineSeg a b = head path
-                               ll = LineSeg origin $ lerp a b 0.5
-                               inters = mapIntersection (lineSegLineSeg2Intersect ll)
-                                        $ concat (deleteFirstsBy approx paths [path])
-
-                           newPath
-                           drawSegment2 ll
-                           stroke
-
-                           mapM_ (\(x,y)->arc x y 1 0 (2*pi) >> fill) inters
-
-           renderRegionToSVG "hi.svg" (500,500) region (do mapM_ ((render (0,1,0)).snd) pps
-                                                           mapM_ ((render (1,0,0)).polygonToLineSegs.fst) pps)
-
-           return ()
-
 
 -- | stripSuffix a b strips the suffix a from list b
 stripSuffix :: Eq a => [a] -> [a] -> Maybe [a]
