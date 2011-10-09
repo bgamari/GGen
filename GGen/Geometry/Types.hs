@@ -56,10 +56,10 @@ import Test.QuickCheck.All
 import Test.QuickCheck.Property
 
 -- | The maximum distance between identical points
-pointTol = 1e-2
+pointTol = 1e-8
 
 -- | The maximum deviation from one in a dot product to consider vectors parallel
-dirTol = 1e-3
+dirTol = 1e-8
 
 -- | For tagging values that can't have 0 measure when specifying QuickCheck Arbitrarys
 newtype NonNull a = NonNull a deriving Show
@@ -243,6 +243,10 @@ mapIntersectionDropDegen f = mapMaybe g
                                     IDegenerate    -> Nothing
 
 -- QuickCheck properties
+
+-- Properties for lsInvertDispl
+prop_invert_displacement :: LineSeg Point -> Bool
+prop_invert_displacement l = (lsDispl $ lsInvert l) == (negateV $ lsDispl l)
 
 -- Properties for perpendicular
 prop_perpendicular_perp :: NonZero Vec -> NonZero Vec -> Bool

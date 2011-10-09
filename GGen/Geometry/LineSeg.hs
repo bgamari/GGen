@@ -1,7 +1,7 @@
 {-# LANGUAGE TemplateHaskell, FlexibleContexts, TypeFamilies #-}
 
 module GGen.Geometry.LineSeg ( mergeLineSegs
-                             , mergeLineSegs'
+                             , mergeLineSegList
                              , GGen.Geometry.LineSeg.runTests
                              ) where
 
@@ -12,7 +12,10 @@ import GGen.Geometry.Types
 
 import Test.QuickCheck.All
 import Test.QuickCheck.Property
+import Test.QuickCheck.Modifiers (NonZero(..))
 import Data.VectorSpace.QuickCheck
+
+import Debug.Trace
 
 -- | Try merging two line segments
 tryMergeLineSegs :: (InnerSpace p, RealFloat (Scalar p)) => LineSeg p -> LineSeg p -> Maybe (LineSeg p)
@@ -34,21 +37,19 @@ mergeLineSegs :: (InnerSpace p, RealFloat (Scalar p)) => LineSeg p -> LineSeg p 
 mergeLineSegs a b = maybe [a,b] (replicate 1) $ tryMergeLineSegs a b
 
 -- | Merge a line segment into a list, return list with new segment either merged or added
-mergeLineSegIntoList :: (InnerSpace p, Eq p, RealFloat (Scalar p)) => [LineSeg p] -> LineSeg p -> [LineSeg p]
+mergeLineSegIntoList :: (InnerSpace p, Eq p, RealFloat (Scalar p), Show p) => [LineSeg p] -> LineSeg p -> [LineSeg p]
 mergeLineSegIntoList ls l =
         let tryMerge l' = do new <- tryMergeLineSegs l l'
-                             return $ new:(ls \\ [l])
+                             return $ new:(ls \\ [l'])
             tries = mapMaybe tryMerge ls
         in if null tries then l:ls
                          else head tries
 
--- | Merge line segments in a list
-mergeLineSegs' :: (InnerSpace p, Eq p, RealFloat (Scalar p)) => [LineSeg p] -> [LineSeg p]
-mergeLineSegs' ls = foldl' mergeLineSegIntoList [] ls
+-- | Merge a list of line segments
+mergeLineSegList :: (InnerSpace p, Eq p, RealFloat (Scalar p), Show p) => [LineSeg p] -> [LineSeg p]
+mergeLineSegList ls = foldl' mergeLineSegIntoList [] ls
 
 -- QuickCheck properties
-prop_invert_displacement :: LineSeg Point -> Bool
-prop_invert_displacement l = (lsDispl $ lsInvert l) == (negateV $ lsDispl l)
 
 -- | Split a line segment in two and ensure that the pieces are merged
 prop_merge_divided :: LineSeg Point -> Normalized Double -> Bool -> Bool -> Result
@@ -73,6 +74,20 @@ prop_dont_merge_nonparallel a b
         | otherwise = case tryMergeLineSegs a b of
                                 Just _    -> failed {reason="Inappropriate merge"}
                                 Nothing   -> succeeded
+
+prop_merge_line_seg_into_list :: Vec -> NonZero Vec -> NonZero Double -> Bool
+prop_merge_line_seg_into_list a (NonZero b) (NonZero s) = 
+        let l = LineSeg a b
+            l' = LineSeg b (b + s *^ lsDispl l)
+            merged = mergeLineSegIntoList [l] l'
+        in length merged == 1
+
+prop_merge_line_seg_list :: Vec -> NonZero Vec -> NonZero Double -> Bool
+prop_merge_line_seg_list a (NonZero b) (NonZero s) = 
+        let l = LineSeg a b
+            l' = LineSeg b (b + s *^ lsDispl l)
+            merged = mergeLineSegList [l,l']
+        in length merged == 1
 
 runTests = $quickCheckAll
 

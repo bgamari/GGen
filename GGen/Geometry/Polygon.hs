@@ -1,6 +1,7 @@
 {-# LANGUAGE TupleSections, FlexibleContexts #-}
 
 module GGen.Geometry.Polygon ( lineSegPaths
+                             , lineSegPathToPolygon
                              , lineSegsToPolygons
                              , polygonToLineSegs
                              , planeSlice
@@ -23,7 +24,7 @@ import Data.VectorSpace
 import GGen.Geometry.Types
 import GGen.Geometry.Intersect (lineSegLineSeg2Intersect, planeFaceIntersect)
 import GGen.Geometry.BoundingBox (facesBoundingBox)
-import GGen.Geometry.LineSeg (mergeLineSegs')
+import GGen.Geometry.LineSeg (mergeLineSegList)
 
 -- | Find contiguous paths of line segments
 lineSegPaths :: (InnerSpace p, RealFloat (Scalar p), Eq p) => [LineSeg p] -> [LineSegPath p]
@@ -60,7 +61,7 @@ lineSegsToPolygons = partitionEithers . map f . lineSegPaths
         where f path = maybe (Right path) Left $ lineSegPathToPolygon path
 
 -- | Get line segments of polygon boundary
-polygonToLineSegs :: Polygon Point2 -> [LineSeg Point2]
+polygonToLineSegs :: (InnerSpace p, RealFloat (Scalar p)) => Polygon p -> [LineSeg p]
 polygonToLineSegs (_:[]) = []
 polygonToLineSegs poly@(a:b:_) = (LineSeg a b) : (polygonToLineSegs $ tail poly)
 
@@ -78,14 +79,14 @@ planeSlice plane faces =
                 IIntersect i  -> Just i
                 INull         -> Nothing
                 IDegenerate   -> Nothing  -- TODO: Figure this out
-            lines = mapMaybe f faces
+            lines = mergeLineSegList $ mapMaybe f faces
             paths :: [LineSegPath Point2]
             paths = map projLineSegPath $ lineSegPaths lines
 
             -- To figure out filled-ness, we project a segment from outside of the bounding box to each
             -- of the line segment paths, counting intersections as we go
             (bbMin, bbMax) = facesBoundingBox faces
-            origin = proj $ bbMax + lerp bbMin bbMax 0.1
+            origin = proj $ bbMax + (bbMax-bbMin) ^* 0.1
 
             -- | Figure out whether polygon should be filled
             orientPath :: LineSegPath Point2 -> OrientedPolygon Point2

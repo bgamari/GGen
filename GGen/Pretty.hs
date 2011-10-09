@@ -1,5 +1,6 @@
+{-# LANGUAGE TypeSynonymInstances #-}
+
 module GGen.Pretty ( vec
-                   , point
                    , lineSeg
                    , line
                    , plane
@@ -13,14 +14,19 @@ import Data.VectorSpace
 import Text.PrettyPrint.HughesPJ as PP
 import GGen.Geometry.Types
 
+class Vector v where
+        vec :: v -> Doc
+
+instance Vector Vec where
+        vec (x,y,z) = parens $ hcat $ punctuate (text ", ") $ map approxDouble [x,y,z]
+
+instance Vector Vec2 where
+        vec (x,y) = parens $ hcat $ punctuate (text ", ") $ map approxDouble [x,y]
+
 approx :: Int -> Double -> Double
 approx places x = (realToFrac $ round $ 10^places*x) / 10^places
 
 approxDouble = PP.double . approx 2
-
-vec :: Vec -> Doc
-vec (x,y,z) = parens $ hcat $ punctuate (text ", ") $ map approxDouble [x,y,z]
-point = vec
 
 lineSeg (LineSeg a b) = text "segment" <+> vec a <+> text "--" <+> vec b
 

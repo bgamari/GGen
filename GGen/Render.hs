@@ -5,6 +5,10 @@ module GGen.Render ( renderPath
                    , renderRegionToSVG
                    , renderPolygons2
                    , renderOrientedPolygons
+
+                   -- Drawing entity paths
+                   , drawPolygon2
+                   , drawSegment2
                    ) where
 
 import Debug.Trace
@@ -33,8 +37,7 @@ rescaleForRegion (w,h) (rmin,rmax) =
 
 renderPath2 :: LineSegPath Point2 -> Render ()
 renderPath2 path = 
-        do setSourceRGB 0 0 0
-           newPath
+        do newPath
            mapM_ drawSegment2 $ path
            stroke
 
