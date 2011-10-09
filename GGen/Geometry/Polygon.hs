@@ -12,7 +12,6 @@ import Debug.Trace
 import System.IO.Unsafe (unsafePerformIO)
 import GGen.Render
 import qualified GGen.Pretty as P
-import qualified Text.PrettyPrint.HughesPJ as PP
 import Text.PrettyPrint.HughesPJ (($$), (<+>))
 
 import Data.Maybe (maybe)
@@ -47,6 +46,7 @@ lineSegPath' ls path@(p:_) canFlip =
 -- | Find the polygon representing the given line segment path
 lineSegPathToPolygon :: (InnerSpace p, RealFloat (Scalar p)) => LineSegPath p -> Maybe (Polygon p)
 lineSegPathToPolygon path
+        | length path < 3               = Nothing
         | not $ begin `coincident` end  = Nothing
         | otherwise                     = Just $ f path
         where begin = lsA $ head path
