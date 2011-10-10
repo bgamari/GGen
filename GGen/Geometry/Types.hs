@@ -119,6 +119,14 @@ type NVec2 = Vec2
 -- | Spatial point
 type Point2 = Vec2
 
+-- | Find the normal to a line segment in the given direction. ls2Normal
+-- (LineSeg a b) LeftHanded yields a normal pointing to the left as one travels
+-- from a to b
+ls2Normal :: LineSeg Point2 -> Hand -> Vec2
+ls2Normal l RightHanded = normalized (-y, x)
+        where (x,y) = lsDispl l
+ls2Normal l LeftHanded = - ls2Normal l RightHanded
+
 
 -- General geometry
 
