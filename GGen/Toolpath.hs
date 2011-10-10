@@ -33,8 +33,8 @@ extrudeLineSegPath :: LineSegPath Point2 -> ToolPath
 extrudeLineSegPath = map (\l -> ToolMove l (Extrude 1))
 
 -- | Extrude path outlining polygon
-extrudePolygonPath :: Polygon Point2 -> ToolPath
-extrudePolygonPath = extrudeLineSegPath . polygonToLineSegPath
+extrudePolygon :: Polygon Point2 -> ToolPath
+extrudePolygon = extrudeLineSegPath . polygonToLineSegPath
 
 -- | Offset polygon boundaries inward or outwards
 -- Positive offset is outwards
@@ -50,7 +50,7 @@ offsetPolygon offset = Polygon . f . polygonToLineSegPath
 
 -- | Outline 
 outlinePath :: [OrientedPolygon Point2] -> ToolPath
-outlinePath polys = concat $ map (extrudePolygonPath.fst) polys
+outlinePath polys = concat $ map (extrudePolygon.fst) polys
 
 -- | Clip a line with a set of polygons
 clipLine :: [Polygon Point2] -> Line Point2 -> [LineSeg Point2]
