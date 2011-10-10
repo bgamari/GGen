@@ -1,4 +1,4 @@
-module GGen.Toolpath ( outlinePath
+module GGen.ToolPath ( outlinePath
                      , infillPath
                      , clipLine
                      ) where

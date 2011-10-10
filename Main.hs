@@ -16,7 +16,7 @@ import GGen.Geometry.Polygon
 import qualified GGen.Pretty as P
 import GGen.Render
 import Text.PrettyPrint.HughesPJ (($$), (<+>))
-import GGen.Toolpath
+import GGen.ToolPath
 
 import Graphics.Rendering.Cairo
 import Control.Monad (liftM)
