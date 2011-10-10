@@ -1,6 +1,9 @@
 module GGen.Types ( Extrude(..)
                   , ToolMove(..)
                   , ToolPath
+                  , tpBegin
+                  , tpEnd
+                  , tpInvert
                   ) where
 
 import GGen.Geometry.Types
@@ -8,14 +11,24 @@ import GGen.Geometry.Types
 -- | Specifies whether the extruder should extrude during a move
 data Extrude = Extrude Double
              | Dry
-             deriving (Show)
+             deriving (Show, Eq)
 
--- | Specifies a tool motion
--- Since we build in layers, we break tool moves into two classes:
--- moves within a slice (XYMove) and moves between slices (ZMove)
-data ToolMove = XYMove Point2 Extrude
-              | ZMove Double
+-- | Specifies a tool motion within a slice
+data ToolMove = ToolMove (LineSeg Point2) Extrude
               deriving (Show)
 
+instance ApproxEq ToolMove where
+        (ToolMove l e) `approx` (ToolMove l' e')  = l `approx` l' && e == e'
+
+-- | A sequence of ToolMoves. Line segments of successive moves should connect.
 type ToolPath = [ToolMove]
+
+tpBegin, tpEnd :: ToolPath -> Point2
+-- | Start point of a toolpath
+tpBegin tp = p where ToolMove (LineSeg p _) _ = head tp
+-- | End point of a toolpath
+tpEnd tp = p where ToolMove (LineSeg _ p) _ = last tp
+
+-- | Reverse a toolpath
+tpInvert = reverse . map (\(ToolMove l e)->ToolMove (lsInvert l) e)
 

@@ -1,18 +1,36 @@
 module GGen.Toolpath ( outlinePath
                      , infillPath
+                     , clipLine
                      ) where
 
 import Data.VectorSpace
-import Data.List (foldl', sortBy)
+import Data.List (foldl', sortBy, deleteBy)
+import Data.Function (on)
 
 import GGen.Geometry.Types
-import GGen.Geometry.Polygon (polygonToLineSegPath)
-import GGen.Geometry.Intersect (lineLineSeg2Intersect, lineLine2Intersect)
+import GGen.Geometry.Polygon (polygonToLineSegPath, linePolygon2Crossings)
+import GGen.Geometry.Intersect (lineLine2Intersect)
+import GGen.Geometry.BoundingBox (polygons2BoundingBox)
 import GGen.Types
+
+
+-- | Patch together a list of toolpaths into a single toolpath minimizing
+-- unnecessary motion
+concatToolPaths :: [ToolPath] -> ToolPath
+concatToolPaths [] = []
+concatToolPaths tps = f first (tail tps) (tpEnd first)
+        where first = head tps
+              tpDist p tp = magnitude (p - tpBegin tp)
+              f :: ToolPath -> [ToolPath] -> Point2 -> ToolPath
+              f tp [] _ = tp
+              f tp tps pos = let next = snd $ head -- TODO: Reverse polygons
+                                      $ sortBy (compare `on` fst)
+                                      $ map (\tp->(tpDist pos tp, tp)) tps
+                             in f (tp++next) (deleteBy approx next tps) (tpEnd next)
 
 -- | Extrude path of line segments
 extrudeLineSegPath :: LineSegPath Point2 -> ToolPath
-extrudeLineSegPath path = XYMove (lsA $ head path) Dry : (map (\l -> XYMove (lsB l) (Extrude 1)) path)
+extrudeLineSegPath = map (\l -> ToolMove l (Extrude 1))
 
 -- | Extrude path outlining polygon
 extrudePolygonPath :: Polygon Point2 -> ToolPath
@@ -37,29 +55,39 @@ outlinePath polys = concat $ map (extrudePolygonPath.fst) polys
 -- | Clip a line with a set of polygons
 clipLine :: [Polygon Point2] -> Line Point2 -> [LineSeg Point2]
 clipLine polys line = 
-        let segs = concat $ map polygonToLineSegPath polys
-            inters = mapIntersection (lineLineSeg2Intersect line) segs
+        let inters = concat $ map (linePolygon2Crossings line) polys
             cmpInter (ax,ay) (bx,by) = case compare ax bx of 
                                             EQ -> compare ay by
                                             c  -> c
             sorted = sortBy cmpInter inters
+
             f :: [Point2] -> Bool -> [LineSeg Point2]
-            f points@(a:b:_) False = f (tail points) True
-            f points@(a:b:_) True = (LineSeg a b) : (f (tail points) False)
-            f _ True = error "Unterminated line segment"
-            f _ False = []
+            f points@(a:b:_) fill = if fill then (LineSeg a b) : (f (tail points) False)
+                                            else f (tail points) True
+            f (a:[]) True = error $ "Unterminated line segment: "++show sorted
+            f _ _ = []
         in f sorted True
 
 -- | Figure out regions where infill is necessary
-infillRegions :: [OrientedPolygon Point2] -> [Polygon Point2]
-infillRegions polys = 
-        undefined
+infillRegions :: [Polygon Point2] -> [Polygon Point2]
+infillRegions = id
 
-infillPath :: Double -> [OrientedPolygon Point2] -> (ToolPath, Double)
-infillPath infillRatio polys = 
-        let regions = infillRegions polys
-        in undefined
+infillPattern :: Double -> Box Point2 -> [Line Point2]
+infillPattern infillRatio (a,b) =
+        map (\t -> Line (lerp a b t) (1,1)) ts
+        where ts = map (/10) [0..20]
 
-toolPath :: [OrientedPolygon Point2] -> ToolPath
-toolPath = undefined
+infillPath :: Double -> [OrientedPolygon Point2] -> ToolPath
+infillPath infillRatio opolys = 
+        let polys = map fst opolys
+            regions = infillRegions polys
+            bb = polygons2BoundingBox polys
+            pattern = infillPattern infillRatio bb
+            clipped = concat $ map (clipLine polys) pattern
+        in concat $ map (\l->extrudeLineSegPath [l]) clipped
+
+
+-- QuickCheck properties
+
+-- | Properties for clipLine
 

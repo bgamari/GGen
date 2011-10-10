@@ -9,6 +9,7 @@ module GGen.Render (
                    , renderPolygons2
                    , renderOrientedPolygons
                    , renderToolpath
+                   , renderPoint2
 
                    -- Utility
                    , renderRegionToSVG
@@ -126,14 +127,11 @@ renderOrientedPolygons polys =
 renderToolpath :: ToolPath -> Render ()
 renderToolpath tp =
         do newPath
-           let f (l, Extrude _) = setSourceRGBA 0 0 1 0.6 >> renderArrow l >> stroke
-               f (l, Dry) = setSourceRGBA 0 1 0 0.6 >> renderArrow l >> stroke
-           mapM_ f $ toolPathToLineSegs tp
+           let f (ToolMove l (Extrude _)) = setSourceRGBA 0 0 1 0.6 >> renderArrow l >> stroke
+               f (ToolMove l Dry) = setSourceRGBA 0 1 0 0.6 >> renderArrow l >> stroke
+           mapM_ f tp
 
-toolPathToLineSegs :: ToolPath -> [(LineSeg Point2, Extrude)]
-toolPathToLineSegs (XYMove begin _ : tp) = f begin tp
-        where f :: Point2 -> ToolPath -> [(LineSeg Point2, Extrude)]
-              f _ [] = []
-              f last (XYMove p e:rest) = (LineSeg last p, e) : f p rest
-toolPathToLineSegs _ = []
+renderPoint2 :: Point2 -> Render ()
+renderPoint2 (x,y) =
+        arc x y 1 0 (2*pi) >> fill
 

@@ -52,7 +52,7 @@ stripSuffix a b
 
 doSlice :: [Face] -> String -> Box Point -> Double -> IO ()
 doSlice faces rootName region@(rMin,rMax) z = 
-        do printf "Slice Z=%1.2f\r" z
+        do printf "Slice Z=%1.2f\n" z
            hFlush stdout
 
            let plane = Plane { planeNormal=(0,0,1)
@@ -67,4 +67,5 @@ doSlice faces rootName region@(rMin,rMax) z =
            renderRegionToSVG filename (500,500) region $
                    do renderOrientedPolygons opolys
                       renderToolpath outline
+                      renderToolpath infill
 
