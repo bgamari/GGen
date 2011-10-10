@@ -25,12 +25,11 @@ import Data.Cross
 
 -- | Point of intersection between a ray and a line segment in two dimensions
 rayLineSeg2Intersect :: Ray Point2 -> LineSeg Point2 -> Intersection Point2
-rayLineSeg2Intersect ray@(Ray {rBegin=u, rDir=v}) l@(LineSeg a b)
-        | parallel v m  = if t >= 0 && t' >= 0 && t' <= 1 then IDegenerate
-                                                          else INull
-        | otherwise     = if t >= 0 && t' >= 0 && t' <= 1 then IIntersect $ lerp a b t'
-                                                          else INull
-        where m = b - a
+rayLineSeg2Intersect (Ray {rBegin=u, rDir=v}) l@(LineSeg a b)
+        | t >= 0 && t' >= 0 && t' <= 1  = if parallel v m then IDegenerate
+                                                          else IIntersect $ lerp a b t'
+        | otherwise                     = INull
+        where m = lsDispl l
               mm = magnitudeSq m
               vv = magnitudeSq v
               -- Length along line segment
