@@ -2,6 +2,7 @@
 
 module GGen.Geometry.Intersect ( rayLineSeg2Intersect
                                , lineSegLineSeg2Intersect
+                               , lineLine2Intersect
                                , faceLineIntersect
                                , planeLineSegIntersect
                                , planeFaceIntersect
@@ -52,6 +53,19 @@ lineSegLineSeg2Intersect u@(LineSeg ua ub) v@(LineSeg va vb)
                    / (1 - (m <.> n)^2 / (mm*nn))
               tv = ((tu *^ m + (ua-va)) <.> n) / nn -- Length along line segment v
               a = tu >= 0 && tu <= 1 && tv >= 0 && tv <= 1
+
+lineLine2Intersect :: Line Point2 -> Line Point2 -> Intersection Point2
+lineLine2Intersect u v
+        | ua == va && m `parallel` n    = IDegenerate
+        | otherwise                     = IIntersect $ ua + tu *^ m
+        where Line {lPoint=ua, lDir=m} = u
+              Line {lPoint=va, lDir=n} = v
+              mm = magnitudeSq m
+              nn = magnitudeSq n
+              -- Length along line u
+              tu = ((m ^/ mm) <.> (va-ua) + ((ua-va) <.> (n ^/ nn)) * (n <.> (m ^/ mm)))
+                   / (1 - (m <.> n)^2 / (mm*nn))
+              tv = ((tu *^ m + (ua-va)) <.> n) / nn -- Length along line v
 
 -- | Point of intersection between a face and a line
 -- Using Moeller, Trumbore (1997)
@@ -155,6 +169,17 @@ prop_line_seg_line_seg2_intersection_hit (NonNull l@(LineSeg a b)) v (Normalized
                                 otherwise     -> failed {reason="No intersection"}
         where intersect = lerp a b t
               l' = LineSeg {lsA=v, lsB=2 *^ intersect - v}
+
+-- Properties for lineLine2Intersect
+-- | Check that intersect falls on both lines
+prop_line_line2_intersection_on_both :: Line Point2 -> Line Point2 -> Result
+prop_line_line2_intersection_on_both u@(Line {lPoint=up, lDir=ud}) v@(Line {lPoint=vp, lDir=vd})
+        | vd `parallel` ud     = rejected
+        | otherwise = case lineLine2Intersect u v of
+                IIntersect i  -> let t  = ((i - up) <.> ud) / magnitudeSq ud
+                                     t' = ((i - vp) <.> vd) / magnitudeSq vd
+                                 in liftBool $ magnitude (up + ud^*t - i) < 1e-8
+                                            && magnitude (vp + vd^*t' - i) < 1e-8
 
 -- Properties for faceLineIntersect
 -- | Check that face-line intersections are found
