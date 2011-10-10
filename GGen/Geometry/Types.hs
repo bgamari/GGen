@@ -19,6 +19,7 @@ module GGen.Geometry.Types ( -- | General
                            , Vec2
                            , NVec2
                            , Point2
+                           , ls2Normal
                            -- | n dimensional geometry
                            , parallel
                            , perpendicular

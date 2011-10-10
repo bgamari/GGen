@@ -16,6 +16,7 @@ import GGen.Geometry.Polygon
 import qualified GGen.Pretty as P
 import GGen.Render
 import Text.PrettyPrint.HughesPJ (($$), (<+>))
+import GGen.Toolpath
 
 import Graphics.Rendering.Cairo
 import Control.Monad (liftM)
@@ -37,8 +38,8 @@ main = do filename:_ <- getArgs
           let sliceZ = 1
               nSlices = (zMax-zMin) / sliceZ
               slices = map (\i->zMin + i*sliceZ) [0..nSlices]
-              sliceFilename = printf "%s-z%1.2f.svg" root :: Double -> String
-          mapM_ (\z->renderSlice faces (sliceFilename z) region z) slices
+
+          mapM_ (\z->doSlice faces root region z) slices
 
           return()
 
@@ -49,14 +50,21 @@ stripSuffix a b
         | a `isSuffixOf` b  = stripSuffix (init a) (init b)
         | otherwise         = Nothing
 
-renderSlice :: [Face] -> FilePath -> Box Point -> Double -> IO ()
-renderSlice faces filename region@(rMin,rMax) z = 
+doSlice :: [Face] -> String -> Box Point -> Double -> IO ()
+doSlice faces rootName region@(rMin,rMax) z = 
         do printf "Slice Z=%1.2f\r" z
            hFlush stdout
+
            let plane = Plane { planeNormal=(0,0,1)
                              , planePoint=rMin + (0,0,1) ^* z }
-               ps = planeSlice plane faces
+               opolys = planeSlice plane faces
 
+           let outline = outlinePath opolys
+               infill = infillPath 0.9 opolys
+
+           let filename = printf "%s-z%1.2f.svg" rootName z
            --renderRegionToSVG filename (500,500) region (renderPolygons2 $ map fst ps)
-           renderRegionToSVG filename (500,500) region (renderOrientedPolygons ps)
+           renderRegionToSVG filename (500,500) region $
+                   do renderOrientedPolygons opolys
+                      renderToolpath outline
 
