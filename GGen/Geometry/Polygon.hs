@@ -3,7 +3,7 @@
 module GGen.Geometry.Polygon ( lineSegPaths
                              , lineSegPathToPolygon
                              , lineSegsToPolygons
-                             , polygonToLineSegs
+                             , polygonToLineSegPath
                              , planeSlice
                              , OrientedPolygon
                              , runTests
@@ -59,14 +59,15 @@ lineSegPathToPolygon path
               f (p:path) = lsA p : f path
 
 -- | Try to match up a set of line segments into a set of closed polygons
--- Returns tuple with resulting polygons and unassigned line segments
+-- Returns tuple with resulting polygons and line segment paths which could not
+-- be closed
 lineSegsToPolygons :: (InnerSpace p, RealFloat (Scalar p), Eq p) => [LineSeg p] -> ([Polygon p], [LineSegPath p])
 lineSegsToPolygons = partitionEithers . map f . lineSegPaths
         where f path = maybe (Right path) Left $ lineSegPathToPolygon path
 
 -- | Get line segments of polygon boundary
-polygonToLineSegs :: (InnerSpace p, RealFloat (Scalar p)) => Polygon p -> [LineSeg p]
-polygonToLineSegs (Polygon points)
+polygonToLineSegPath :: (InnerSpace p, RealFloat (Scalar p)) => Polygon p -> LineSegPath p
+polygonToLineSegPath (Polygon points)
         | length points < 3  = error "Polygons must have at least 4 points"
         | otherwise          = f points
         where f (a:[]) = [LineSeg a (head points)]
@@ -102,7 +103,7 @@ planeSlice plane faces =
                                        $ concat (deleteFirstsBy approx paths [path])
                             in length inters `mod` 2 == 1
 
-        in map (\poly->orientPolygon2 poly (fillPoly (polygonToLineSegs poly))) polys
+        in map (\poly->orientPolygon2 poly (fillPoly (polygonToLineSegPath poly))) polys
 
 fixPolygon2Chirality :: Polygon Point2 -> Polygon Point2
 fixPolygon2Chirality poly@(Polygon points)
@@ -127,7 +128,7 @@ orientPolygon2 poly fill
 prop_polygon_line_seg_roundtrip :: Polygon Point2 -> Result
 prop_polygon_line_seg_roundtrip poly@(Polygon points)
         | length points < 3 = rejected
-        | otherwise = let ls = polygonToLineSegs poly
+        | otherwise = let ls = polygonToLineSegPath poly
                       in case lineSegPathToPolygon ls of
                               Just poly' -> liftBool $ poly == poly'
                               Nothing    -> failed {reason="No polygon found"}
@@ -135,9 +136,9 @@ prop_polygon_line_seg_roundtrip poly@(Polygon points)
 prop_line_seg_polygon_roundtrip :: [Point2] -> Result
 prop_line_seg_polygon_roundtrip points
         | length points < 3 = rejected
-        | otherwise = let ls = polygonToLineSegs (Polygon points)
+        | otherwise = let ls = polygonToLineSegPath (Polygon points)
                           poly = fromJust $ lineSegPathToPolygon ls
-                          ls' = polygonToLineSegs poly
+                          ls' = polygonToLineSegPath poly
                       in liftBool $ ls `approx` ls'
 
 runTests = $quickCheckAll
