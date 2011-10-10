@@ -74,6 +74,9 @@ newtype NonNull a = NonNull a deriving Show
 class ApproxEq a where
         approx :: a -> a -> Bool
 
+instance ApproxEq a => ApproxEq [a] where
+        a `approx` b = and $ zipWith approx a b
+
 -- Three dimensional geometry
 
 -- | Spatial vector (e.g. direction)
@@ -186,9 +189,6 @@ instance (Arbitrary p, Ord p, Num p, VectorSpace p) => Arbitrary (NonNull (LineS
 -- | A contiguous path of line segments
 type LineSegPath p = [LineSeg p]
 
-instance (InnerSpace p, RealFloat (Scalar p)) => ApproxEq (LineSegPath p) where
-        u `approx` v  = and $ zipWith approx u v
-
 -- | Line defined by point and direction
 data Line p = Line { lPoint :: p
                    , lDir :: p -- Normalized
@@ -252,7 +252,7 @@ data Hand = LeftHanded | RightHanded deriving (Show, Eq)
 -- reflects on which side of an edge the normal will be found. Since polygon
 -- points are given in clockwise order, an oriented polygon with right-handed
 -- orientation will have its normal facing inward. For polygons represented
--- printed areas, the normal faces away from the filled body.
+-- printed areas, the normal points away from the filled body.
 type OrientedPolygon p = (Polygon p, Hand)
 
 
