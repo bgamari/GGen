@@ -1,6 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module GGen.Geometry.Intersect ( rayLineSeg2Intersect
+                               , lineLineSeg2Intersect
                                , lineSegLineSeg2Intersect
                                , lineLine2Intersect
                                , faceLineIntersect
@@ -36,6 +37,20 @@ rayLineSeg2Intersect (Ray {rBegin=u, rDir=v}) l@(LineSeg a b)
               t' = ((m ^/ mm) <.> (u-a) - ((u-a) <.> (v ^/ vv)) * (v <.> (m ^/ mm)))
                    / (1 - (m <.> v)^2 / (mm*vv))
               t  = ((t' *^ m + (a-u)) <.> v) / vv -- Length along ray
+
+-- | Point of intersection between a line and a line segment in two dimensions
+lineLineSeg2Intersect :: Line Point2 -> LineSeg Point2 -> Intersection Point2
+lineLineSeg2Intersect (Line {lPoint=u, lDir=v}) (LineSeg a b)
+        | t' >= 0 && t' <= 1    = if parallel v m then IDegenerate
+                                                  else IIntersect $ lerp a b t'
+        | otherwise             = INull
+        where m = b - a
+              mm = magnitudeSq m
+              vv = magnitudeSq v
+              -- Length along line segment
+              t' = ((m ^/ mm) <.> (u-a) - ((u-a) <.> (v ^/ vv)) * (v <.> (m ^/ mm)))
+                   / (1 - (m <.> v)^2 / (mm*vv))
+              t  = ((t' *^ m + (a-u)) <.> v) / vv -- Length along line
 
 -- | Point of intersection between two line segments in two dimensions
 lineSegLineSeg2Intersect :: LineSeg Point2 -> LineSeg Point2 -> Intersection Point2
