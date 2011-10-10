@@ -5,7 +5,7 @@ module GGen.Geometry.Polygon ( lineSegPaths
                              , lineSegsToPolygons
                              , polygonToLineSegPath
                              , planeSlice
-                             , OrientedPolygon
+                             , linePolygon2Crossings
                              , runTests
                              ) where
 
@@ -22,7 +22,7 @@ import Data.Maybe (fromJust, mapMaybe, catMaybes, listToMaybe)
 import Data.VectorSpace
 
 import GGen.Geometry.Types hiding (runTests)
-import GGen.Geometry.Intersect (lineSegLineSeg2Intersect, planeFaceIntersect)
+import GGen.Geometry.Intersect (lineSegLineSeg2Intersect, planeFaceIntersect, lineLineSeg2Intersect)
 import GGen.Geometry.BoundingBox (facesBoundingBox)
 import GGen.Geometry.LineSeg (mergeLineSegList)
 
@@ -121,6 +121,24 @@ orientPolygon2 poly fill
         | otherwise     = (poly', LeftHanded)
         where poly' = fixPolygon2Chirality poly
 
+-- | Find points of intersection between a line and polygon where the line
+-- actually crosses the polygon's boundary. This eliminates cases where
+-- the line skims a corner by testing that the dot product of consecutive edges
+-- normals and the line are of the same sign
+linePolygon2Crossings :: Line Point2 -> Polygon Point2 -> [Point2]
+linePolygon2Crossings l@(Line {lDir=dir}) poly =
+        let f :: [LineSeg Point2] -> [Point2]
+            f ls@(a:b:_) = 
+                let an = ls2Normal a LeftHanded <.> dir
+                    bn = ls2Normal b LeftHanded <.> dir
+                in case (lineLineSeg2Intersect l a, lineLineSeg2Intersect l b) of
+                     (IIntersect ia, IIntersect ib)  | an * bn > 0  -> ia : f (tail ls)
+                     (IIntersect ia, _)                             -> ia : f (tail ls)
+                     otherwise                                      -> f (tail ls)
+            f (_:[]) = []
+            segs = polygonToLineSegPath poly
+        in nubPoints $ f (segs ++ [head segs])
+
 
 -- QuickCheck properties
 
@@ -140,6 +158,9 @@ prop_line_seg_polygon_roundtrip points
                           poly = fromJust $ lineSegPathToPolygon ls
                           ls' = polygonToLineSegPath poly
                       in liftBool $ ls `approx` ls'
+
+-- Properties for linePolygon2Crossings
+-- TODO
 
 runTests = $quickCheckAll
 
