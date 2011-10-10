@@ -239,8 +239,11 @@ instance (s ~ Scalar p, Floating s, Arbitrary p, InnerSpace p, Ord p, Num p) => 
 -- | Right- or left-handedness
 data Hand = LeftHanded | RightHanded deriving (Show, Eq)
 
--- A polygon with points in clockwise order. The associated handedness reflects
--- on which side of an edge the normal will be found.
+-- | A polygon with points in clockwise order. The associated handedness
+-- reflects on which side of an edge the normal will be found. Since polygon
+-- points are given in clockwise order, an oriented polygon with right-handed
+-- orientation will have its normal facing inward. For polygons represented
+-- printed areas, the normal faces away from the filled body.
 type OrientedPolygon p = (Polygon p, Hand)
 
 
