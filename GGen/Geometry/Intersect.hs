@@ -47,10 +47,10 @@ lineSegLineSeg2Intersect u@(LineSeg ua ub) v@(LineSeg va vb)
               mm = magnitudeSq m
               n = lsDispl v
               nn = magnitudeSq n
-              -- Length along line segment v
+              -- Length along line segment u
               tu = ((m ^/ mm) <.> (va-ua) + ((ua-va) <.> (n ^/ nn)) * (n <.> (m ^/ mm)))
                    / (1 - (m <.> n)^2 / (mm*nn))
-              tv = ((tu *^ m + (ua-va)) <.> n) / nn -- Length along line segment u
+              tv = ((tu *^ m + (ua-va)) <.> n) / nn -- Length along line segment v
               a = tu >= 0 && tu <= 1 && tv >= 0 && tv <= 1
 
 -- | Point of intersection between a face and a line
