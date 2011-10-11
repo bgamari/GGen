@@ -74,9 +74,10 @@ infillRegions = id
 
 infillPattern :: InfillRatio -> Angle -> Box Point2 -> [Line Point2]
 infillPattern infillRatio infillAngle (a,b) =
-        map (\t -> Line (lerp a b t) (sin phi, cos phi)) ts
-        where ts = map (/10) [0..20]
+        map (\t -> Line (lBegin t) (cos phi, sin phi)) ts
+        where ts = map (/40) [-40..40]
               phi = infillAngle / 180 * pi
+              lBegin = lerp a (a + magnitude (b-a) *^ (-sin phi, cos phi))
 
 -- | Build the toolpath describing the infill of a slice
 infillPath :: InfillRatio -> Angle -> [OrientedPolygon Point2] -> ToolPath
