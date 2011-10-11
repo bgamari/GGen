@@ -127,7 +127,9 @@ type Point2 = Vec2
 -- (LineSeg a b) LeftHanded yields a normal pointing to the left as one travels
 -- from a to b
 ls2Normal :: LineSeg Point2 -> Hand -> Vec2
-ls2Normal l RightHanded = normalized (-y, x)
+ls2Normal l RightHanded
+        | magnitude (x,y) < 1e-8  = error "Trying to get normal of zero-magnitude vector"
+        | otherwise               = normalized (-y, x)
         where (x,y) = lsDispl l
 ls2Normal l LeftHanded = - ls2Normal l RightHanded
 
