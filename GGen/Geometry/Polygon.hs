@@ -123,8 +123,8 @@ orientPolygon2 poly fill
 
 -- | Find points of intersection between a line and polygon where the line
 -- actually crosses the polygon's boundary. This eliminates cases where
--- the line skims a corner by testing that the dot product of consecutive edges
--- normals and the line are of the same sign
+-- the line skims a corner by testing that the dot product of consecutive
+-- edges' normals and the line are of the same sign
 linePolygon2Crossings :: Line Point2 -> Polygon Point2 -> [Point2]
 linePolygon2Crossings l@(Line {lDir=dir}) poly =
         let f :: [LineSeg Point2] -> [Point2]
@@ -132,9 +132,18 @@ linePolygon2Crossings l@(Line {lDir=dir}) poly =
                 let an = ls2Normal a LeftHanded <.> dir
                     bn = ls2Normal b LeftHanded <.> dir
                 in case (lineLineSeg2Intersect l a, lineLineSeg2Intersect l b) of
-                     (IIntersect ia, IIntersect ib)  | an * bn > 0  -> ia : f (tail ls)
-                     (IIntersect ia, _)                             -> ia : f (tail ls)
-                     otherwise                                      -> f (tail ls)
+                     (IIntersect ia, IIntersect ib)  | ia `coincident` ib && an * bn >= 0  ->
+                             -- The line is crossing through a vertex
+                             ia : f (tail ls)
+                     (IIntersect ia, IIntersect ib)  | ia `coincident` ib && an * bn < 0 ->
+                             -- The line is grazing a vertex
+                             f (tail ls)
+                     (_, IIntersect ib)  | not (ib `coincident` lsA b) && not (ib `coincident` lsB b) ->
+                             -- The line is crossing through an edge
+                             ib : f (tail ls)
+                     otherwise                                      ->
+                             -- The line isn't crossing
+                             f (tail ls)
             f (_:[]) = []
             segs = polygonToLineSegPath poly
         in nubPoints $ f (segs ++ [head segs])
@@ -160,7 +169,9 @@ prop_line_seg_polygon_roundtrip points
                       in liftBool $ ls `approx` ls'
 
 -- Properties for linePolygon2Crossings
--- TODO
+--prop_line_polygon2_crossings_corner_miss :: Polygon Point2 -> Result
+--prop_line_polygon2_crossings_corner_miss poly@(Polygon points) =
+--        let l = Line points
 
 runTests = $quickCheckAll
 
