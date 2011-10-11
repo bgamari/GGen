@@ -16,8 +16,9 @@ import GGen.Geometry.Polygon
 import qualified GGen.Pretty as P
 import GGen.Render
 import Text.PrettyPrint.HughesPJ (($$), (<+>))
-import GGen.ToolPath
 import GGen.Types
+import GGen.ToolPath
+import GGen.GCode
 
 import Graphics.Rendering.Cairo
 import Control.Monad (liftM)
@@ -54,6 +55,8 @@ main = do filename:_ <- getArgs
 
           --mapM_ (\z->doSlice faces root region z) sliceZs
           mapM_ (doToolPath root region) toolpaths
+          let gCode = slicesToGCode toolpaths
+          writeFile (root++".gcode") $ unlines gCode
 
           return()
 
