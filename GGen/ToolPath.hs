@@ -13,7 +13,6 @@ import GGen.Geometry.Intersect (lineLine2Intersect)
 import GGen.Geometry.BoundingBox (polygons2BoundingBox)
 import GGen.Types
 
-
 -- | Patch together a list of toolpaths into a single toolpath minimizing
 -- unnecessary motion
 concatToolPaths :: [ToolPath] -> ToolPath
@@ -26,7 +25,8 @@ concatToolPaths tps = f first (tail tps) (tpEnd first)
               f tp tps pos = let next = snd $ head -- TODO: Reverse polygons
                                       $ sortBy (compare `on` fst)
                                       $ map (\tp->(tpDist pos tp, tp)) tps
-                             in f (tp++next) (deleteBy approx next tps) (tpEnd next)
+                                 next' = ToolMove (LineSeg pos (tpBegin next)) Dry : next
+                             in f (tp++next') (deleteBy approx next tps) (tpEnd next)
 
 -- | Extrude path of line segments
 extrudeLineSegPath :: LineSegPath Point2 -> ToolPath
