@@ -22,11 +22,15 @@ concatToolPaths tps = f first (tail tps) (tpEnd first)
               tpDist p tp = magnitude (p - tpBegin tp)
               f :: ToolPath -> [ToolPath] -> Point2 -> ToolPath
               f tp [] _ = tp
-              f tp tps pos = let next = snd $ head -- TODO: Reverse polygons
-                                      $ sortBy (compare `on` fst)
-                                      $ map (\tp->(tpDist pos tp, tp)) tps
+              f tp tps pos = let nextToolPaths tp = [ (tpDist pos tp, tp, tps')
+                                                    , (tpDist pos inverted, inverted, tps') ]
+                                                  where inverted = tpInvert tp
+                                                        tps' = deleteBy approx tp tps
+                                 (_, next, tps') = head
+                                                 $ sortBy (compare `on` (\(d,_,_)->d))
+                                                 $ concat $ map nextToolPaths tps
                                  next' = ToolMove (LineSeg pos (tpBegin next)) Dry : next
-                             in f (tp++next') (deleteBy approx next tps) (tpEnd next)
+                             in f (tp++next') tps' (tpEnd next)
 
 -- | Extrude path of line segments
 extrudeLineSegPath :: LineSegPath Point2 -> ToolPath
