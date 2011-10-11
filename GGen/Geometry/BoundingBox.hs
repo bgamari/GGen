@@ -7,6 +7,7 @@ module GGen.Geometry.BoundingBox ( points2BoundingBox
 import GGen.Geometry.Types
 
 points2BoundingBox :: [Point2] -> Box Point2
+points2BoundingBox [] = ((0,0), (0,0))
 points2BoundingBox points =
         let (xs,ys) = unzip points
         in ( (minimum xs, minimum ys)
