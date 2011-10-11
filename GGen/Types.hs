@@ -4,6 +4,9 @@ module GGen.Types ( Extrude(..)
                   , tpBegin
                   , tpEnd
                   , tpInvert
+                  , Slice
+                  , InfillRatio
+                  , Angle
                   ) where
 
 import GGen.Geometry.Types
@@ -31,4 +34,13 @@ tpEnd tp = p where ToolMove (LineSeg _ p) _ = last tp
 
 -- | Reverse a toolpath
 tpInvert = reverse . map (\(ToolMove l e)->ToolMove (lsInvert l) e)
+
+-- | A slice is defined by a Z coordinate and a set of oriented polygons
+type Slice = (Double, [OrientedPolygon Point2])
+
+-- | An infill ratio
+type InfillRatio = Double
+
+-- | An angle in degrees
+type Angle = Double
 

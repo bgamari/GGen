@@ -1,6 +1,6 @@
 module GGen.ToolPath ( outlinePath
                      , infillPath
-                     , clipLine
+                     , toolPath
                      ) where
 
 import Data.VectorSpace
@@ -48,7 +48,7 @@ offsetPolygon offset = Polygon . f . polygonToLineSegPath
                     IIntersect p' = lineLine2Intersect l l'
                 in p':f (tail segs)
 
--- | Outline 
+-- | Build the toolpath describing the outline of a slice 
 outlinePath :: [OrientedPolygon Point2] -> ToolPath
 outlinePath polys = concat $ map (extrudePolygon.fst) polys
 
@@ -64,7 +64,7 @@ clipLine polys line =
             f :: [Point2] -> Bool -> [LineSeg Point2]
             f points@(a:b:_) fill = if fill then (LineSeg a b) : (f (tail points) False)
                                             else f (tail points) True
-            f (a:[]) True = error $ "Unterminated line segment: "++show sorted
+            f (a:[]) True = error $ "Unterminated line segment "++show sorted++" while clipping "++show line++" against polygon "++show polys
             f _ _ = []
         in f sorted True
 
@@ -72,20 +72,30 @@ clipLine polys line =
 infillRegions :: [Polygon Point2] -> [Polygon Point2]
 infillRegions = id
 
-infillPattern :: Double -> Box Point2 -> [Line Point2]
-infillPattern infillRatio (a,b) =
-        map (\t -> Line (lerp a b t) (1,1)) ts
+infillPattern :: InfillRatio -> Angle -> Box Point2 -> [Line Point2]
+infillPattern infillRatio infillAngle (a,b) =
+        map (\t -> Line (lerp a b t) (sin phi, cos phi)) ts
         where ts = map (/10) [0..20]
+              phi = infillAngle / 180 * pi
 
-infillPath :: Double -> [OrientedPolygon Point2] -> ToolPath
-infillPath infillRatio opolys = 
+-- | Build the toolpath describing the infill of a slice
+infillPath :: InfillRatio -> Angle -> [OrientedPolygon Point2] -> ToolPath
+infillPath infillRatio infillAngle opolys = 
         let polys = map fst opolys
             regions = infillRegions polys
             bb = polygons2BoundingBox polys
-            pattern = infillPattern infillRatio bb
+            pattern = infillPattern infillRatio infillAngle bb
             clipped = concat $ map (clipLine polys) pattern
-        in concat $ map (\l->extrudeLineSegPath [l]) clipped
+        in concatToolPaths $ map (\l->extrudeLineSegPath [l]) clipped
 
+-- | Build the toolpaths of a stack of slices
+toolPath :: InfillRatio -> [Slice] -> [(Double, ToolPath)]
+toolPath infillRatio slices = zipWith f slices (cycle [0, 60, 120])
+        where f :: Slice -> Double -> (Double, ToolPath)
+              f (z,opolys) infillAngle =
+                      let outline = outlinePath opolys
+                          infill = infillPath infillRatio infillAngle opolys
+                      in (z, outline ++ infill)
 
 -- QuickCheck properties
 
