@@ -69,10 +69,18 @@ lineSegLineSeg2Intersect u@(LineSeg ua ub) v@(LineSeg va vb)
               tv = ((tu *^ m + (ua-va)) <.> n) / nn -- Length along line segment v
               a = tu >= 0 && tu <= 1 && tv >= 0 && tv <= 1
 
+-- | Point of intersection between two lines in two dimensions
 lineLine2Intersect :: Line Point2 -> Line Point2 -> Intersection Point2
-lineLine2Intersect u v
+lineLine2Intersect u@(Line {lPoint=ua, lDir=m}) v 
+        | IIntersect (tu, tv) <- i      = IIntersect $ ua + tu *^ m 
+        | otherwise                     = i
+        where i = lineLine2Intersect' u v
+
+-- | Parameters (tu, tv) of intersection between two lines in two dimensions
+lineLine2Intersect' :: Line Point2 -> Line Point2 -> Intersection (Double,Double)
+lineLine2Intersect' u v
         | ua == va && m `parallel` n    = IDegenerate
-        | otherwise                     = IIntersect $ ua + tu *^ m
+        | otherwise                     = IIntersect (tu, tv)
         where Line {lPoint=ua, lDir=m} = u
               Line {lPoint=va, lDir=n} = v
               mm = magnitudeSq m
