@@ -56,18 +56,11 @@ lineLineSeg2Intersect (Line {lPoint=u, lDir=v}) (LineSeg a b)
 -- | Point of intersection between two line segments in two dimensions
 lineSegLineSeg2Intersect :: LineSeg Point2 -> LineSeg Point2 -> Intersection Point2
 lineSegLineSeg2Intersect u@(LineSeg ua ub) v@(LineSeg va vb)
-        | a             = if parallel m n then IDegenerate
-                                          else IIntersect $ lerp va vb tv
-        | otherwise     = INull
-        where m = lsDispl u 
-              mm = magnitudeSq m
-              n = lsDispl v
-              nn = magnitudeSq n
-              -- Length along line segment u
-              tu = ((m ^/ mm) <.> (va-ua) + ((ua-va) <.> (n ^/ nn)) * (n <.> (m ^/ mm)))
-                   / (1 - (m <.> n)^2 / (mm*nn))
-              tv = ((tu *^ m + (ua-va)) <.> n) / nn -- Length along line segment v
-              a = tu >= 0 && tu <= 1 && tv >= 0 && tv <= 1
+        | IIntersect (ut, vt) <- i      = if ut >= 0 && ut <= 1 && vt >= 0 && vt <= 1
+                                            then IIntersect $ ua + lsDispl u ^* ut
+                                            else INull
+        | otherwise                     = i
+        where i = lineLine2Intersect' (Line {lPoint=ua, lDir=lsDispl u}) (Line {lPoint=va, lDir=lsDispl v})
 
 -- | Point of intersection between two lines in two dimensions
 lineLine2Intersect :: Line Point2 -> Line Point2 -> Intersection Point2
