@@ -41,17 +41,12 @@ rayLineSeg2Intersect (Ray {rBegin=u, rDir=v}) l@(LineSeg a b)
 
 -- | Point of intersection between a line and a line segment in two dimensions
 lineLineSeg2Intersect :: Line Point2 -> LineSeg Point2 -> Intersection Point2
-lineLineSeg2Intersect (Line {lPoint=u, lDir=v}) (LineSeg a b)
-        | t' > -1e-8 && t'-1 < 1e-8    = if parallel v m then IDegenerate
-                                                         else IIntersect $ lerp a b t'
-        | otherwise             = INull
-        where m = b - a
-              mm = magnitudeSq m
-              vv = magnitudeSq v
-              -- Length along line segment
-              t' = ((m ^/ mm) <.> (u-a) - ((u-a) <.> (v ^/ vv)) * (v <.> (m ^/ mm)))
-                   / (1 - (m <.> v)^2 / (mm*vv))
-              t  = ((t' *^ m + (a-u)) <.> v) / vv -- Length along line
+lineLineSeg2Intersect l v@(LineSeg va vb)
+        | IIntersect (ut, vt) <- i      = if vt >= 0 && vt <= 1
+                                            then IIntersect $ va + lsDispl v ^* vt
+                                            else INull
+        | otherwise                     = i
+        where i = lineLine2Intersect' l (Line {lPoint=va, lDir=lsDispl v})
 
 -- | Point of intersection between two line segments in two dimensions
 lineSegLineSeg2Intersect :: LineSeg Point2 -> LineSeg Point2 -> Intersection Point2
