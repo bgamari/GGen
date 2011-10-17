@@ -27,7 +27,7 @@ import Data.Cross
 -- | Point of intersection between a ray and a line segment in two dimensions
 rayLineSeg2Intersect :: Ray Point2 -> LineSeg Point2 -> Intersection Point2
 rayLineSeg2Intersect u v@(LineSeg va vb)
-        | IIntersect (ut, vt) <- i      = if ut >= 0 && vt >= 0 && vt <= 1
+        | IIntersect (ut, vt) <- i      = if ut >~ 0 && vt >~ 0 && vt <= 1
                                             then IIntersect $ va + lsDispl v ^* vt
                                             else INull
         | otherwise                     = i
@@ -36,7 +36,7 @@ rayLineSeg2Intersect u v@(LineSeg va vb)
 -- | Point of intersection between a line and a line segment in two dimensions
 lineLineSeg2Intersect :: Line Point2 -> LineSeg Point2 -> Intersection Point2
 lineLineSeg2Intersect l v@(LineSeg va vb)
-        | IIntersect (ut, vt) <- i      = if vt >= 0 && vt <= 1
+        | IIntersect (ut, vt) <- i      = if vt >~ 0 && vt <~ 1
                                             then IIntersect $ va + lsDispl v ^* vt
                                             else INull
         | otherwise                     = i
@@ -45,7 +45,7 @@ lineLineSeg2Intersect l v@(LineSeg va vb)
 -- | Point of intersection between two line segments in two dimensions
 lineSegLineSeg2Intersect :: LineSeg Point2 -> LineSeg Point2 -> Intersection Point2
 lineSegLineSeg2Intersect u@(LineSeg ua ub) v@(LineSeg va vb)
-        | IIntersect (ut, vt) <- i      = if ut >= 0 && ut <= 1 && vt >= 0 && vt <= 1
+        | IIntersect (ut, vt) <- i      = if ut >~ 0 && ut <~ 1 && vt >~ 0 && vt <~ 1
                                             then IIntersect $ ua + lsDispl u ^* ut
                                             else INull
         | otherwise                     = i
