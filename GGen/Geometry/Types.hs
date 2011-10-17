@@ -8,6 +8,7 @@ module GGen.Geometry.Types ( -- | General
                            , NonNull(..)
                            , nubPoints
                            , nubPointsWithTol
+                           , (=~), (>~), (<~)
                              -- | Three dimensional geometry
                            , Vec
                            , NVec
@@ -76,6 +77,17 @@ class ApproxEq a where
 
 instance ApproxEq a => ApproxEq [a] where
         a `approx` b = and $ zipWith approx a b
+
+(=~) :: ApproxEq a => a -> a -> Bool
+(=~) = approx
+
+(>~), (<~) :: (ApproxEq a, Ord a) => a -> a -> Bool
+x >~ y = x > y || x =~ y
+x <~ y = x < y || x =~ y
+
+-- This might not be a good idea, approximate is a relative term
+instance ApproxEq Double where
+        a `approx` b = abs (a - b) < 1e-8
 
 -- Three dimensional geometry
 
