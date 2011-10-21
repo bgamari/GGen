@@ -8,7 +8,7 @@ module GGen.Geometry.Types ( -- | General
                            , NonNull(..)
                            , nubPoints
                            , nubPointsWithTol
-                           , (=~), (>~), (<~)
+                           , (=~), (>~), (<~), (/=)
                              -- | Three dimensional geometry
                            , Vec
                            , NVec
@@ -78,8 +78,11 @@ class ApproxEq a where
 instance ApproxEq a => ApproxEq [a] where
         a `approx` b = and $ zipWith approx a b
 
-(=~) :: ApproxEq a => a -> a -> Bool
+infix  4  =~, /~, <~, >~
+
+(=~), (/~) :: ApproxEq a => a -> a -> Bool
 (=~) = approx
+(/~) = (not .) . approx
 
 (>~), (<~) :: (ApproxEq a, Ord a) => a -> a -> Bool
 x >~ y = x > y || x =~ y
