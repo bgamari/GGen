@@ -80,13 +80,13 @@ faceLineIntersect (Face {faceVertices=(v0,v1,v2)}) (Line {lPoint=p, lDir=d}) =
                v = v2 - v0
                pp = d `cross3` v
                det = u <.> pp
-           when (abs det < 1e-5) INull
+           when (abs det <~ 0) INull
            let tt = p - v0
                uu = (tt <.> pp) / det
-           when (uu < 0 || uu > 1) INull
+           when (uu <~ 0 || uu >~ 1) INull
            let qq = tt `cross3` u
                vv = (d <.> qq) / det
-           when (vv < 0 || uu+vv > 1) INull
+           when (vv <~ 0 || uu+vv >~ 1) INull
            let t = (v <.> qq) / det
            return $ p + t *^ d
         
