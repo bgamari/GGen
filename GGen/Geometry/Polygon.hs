@@ -62,7 +62,7 @@ lineSegPathToPolygon path
 -- Returns tuple with resulting polygons and line segment paths which could not
 -- be closed
 lineSegsToPolygons :: (InnerSpace p, RealFloat (Scalar p), Eq p) => [LineSeg p] -> ([Polygon p], [LineSegPath p])
-lineSegsToPolygons = partitionEithers . map f . lineSegPaths
+lineSegsToPolygons = partitionEithers . map f . lineSegPaths . mergeLineSegList
         where f path = maybe (Right path) Left $ lineSegPathToPolygon path
 
 -- | Get line segments of polygon boundary
@@ -86,11 +86,9 @@ planeSlice plane faces =
             inPlane face = (abs (z - planeZ) < 1e-5) && (faceNormal face `parallel` (0,0,1))
                            where ((_,_,z),_,_) = faceVertices face
             lines = mapIntersection (planeFaceIntersect plane) $ filter (not.inPlane) faces 
-            paths = lineSegPaths $ mergeLineSegList $ map projLineSeg lines
-            polys = catMaybes $ map (\path->case lineSegPathToPolygon path of
-                                                 Nothing -> trace ("Dropping incomplete polygon"++show path) Nothing
-                                                 a -> a
-                                    ) paths
+
+            paths = map projLineSegPath $ lineSegPaths $ mergeLineSegList lines
+            (polys, unmatchedPaths) = lineSegsToPolygons $ map projLineSeg lines
 
             -- To figure out filled-ness, we project a segment from outside of the bounding box to each
             -- of the line segment paths, counting intersections as we go
@@ -98,14 +96,14 @@ planeSlice plane faces =
             origin = proj $ bbMax + (bbMax-bbMin) ^* 0.1
 
             -- | Figure out whether polygon should be filled
-            fillPoly :: LineSegPath Point2 -> Bool
-            fillPoly path = let LineSeg a b = head path
+            fillPoly :: Polygon Point2 -> Bool
+            fillPoly poly = let path = polygonToLineSegPath poly
+                                LineSeg a b = head path
                                 ll = LineSeg origin $ lerp a b 0.5
                                 inters = mapIntersection (lineSegLineSeg2Intersect ll)
                                        $ concat (deleteFirstsBy approx paths [path])
                             in length inters `mod` 2 == 1
-
-        in map (\poly->orientPolygon2 poly (fillPoly (polygonToLineSegPath poly))) polys
+        in map (\poly->orientPolygon2 poly (fillPoly poly)) polys
 
 fixPolygon2Chirality :: Polygon Point2 -> Polygon Point2
 fixPolygon2Chirality poly@(Polygon points)
