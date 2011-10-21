@@ -37,7 +37,7 @@ mergeLineSegs :: (InnerSpace p, RealFloat (Scalar p)) => LineSeg p -> LineSeg p 
 mergeLineSegs a b = maybe [a,b] (replicate 1) $ tryMergeLineSegs a b
 
 -- | Merge a line segment into a list, return list with new segment either merged or added
-mergeLineSegIntoList :: (InnerSpace p, Eq p, RealFloat (Scalar p), Show p) => [LineSeg p] -> LineSeg p -> [LineSeg p]
+mergeLineSegIntoList :: (InnerSpace p, Eq p, RealFloat (Scalar p)) => [LineSeg p] -> LineSeg p -> [LineSeg p]
 mergeLineSegIntoList ls l =
         let tryMerge l' = do new <- tryMergeLineSegs l l'
                              return $ new:(deleteFirstsBy approx ls [l'])
@@ -46,8 +46,9 @@ mergeLineSegIntoList ls l =
                          else head tries
 
 -- | Merge a list of line segments
-mergeLineSegList :: (InnerSpace p, Eq p, RealFloat (Scalar p), Show p) => [LineSeg p] -> [LineSeg p]
+mergeLineSegList :: (InnerSpace p, Eq p, RealFloat (Scalar p)) => [LineSeg p] -> [LineSeg p]
 mergeLineSegList ls = foldl' mergeLineSegIntoList [] ls
+
 
 -- QuickCheck properties
 
