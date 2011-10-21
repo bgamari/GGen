@@ -83,7 +83,7 @@ planeSlice plane faces =
             projLineSegPath = map projLineSeg
             (_,_,planeZ) = planePoint plane
 
-            inPlane face = (abs (z - planeZ) < 1e-8) && (faceNormal face `parallel` (0,0,1))
+            inPlane face = (abs (z - planeZ) < 1e-5) && (faceNormal face `parallel` (0,0,1))
                            where ((_,_,z),_,_) = faceVertices face
             lines = mapIntersection (planeFaceIntersect plane) $ filter (not.inPlane) faces 
             paths = lineSegPaths $ mergeLineSegList $ map projLineSeg lines

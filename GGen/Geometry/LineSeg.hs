@@ -66,7 +66,7 @@ prop_merge_divided l (Normalized s) flipA flipB
                             m = tryMergeLineSegs a b
                             diffBegin = magnitude $ lsA l ^-^ lsA (fromJust m)
                             diffEnd   = magnitude $ lsB l ^-^ lsB (fromJust m)
-                            passed = diffBegin < 1e-5 && diffEnd < 1e-5
+                            passed = diffBegin < 1e-8 && diffEnd < 1e-8
 
 -- | Make sure segments which aren't parallel aren't merged
 prop_dont_merge_nonparallel :: LineSeg Point -> LineSeg Point -> Result

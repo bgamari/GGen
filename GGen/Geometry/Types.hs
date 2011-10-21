@@ -61,10 +61,10 @@ import Test.QuickCheck.All
 import Test.QuickCheck.Property
 
 -- | The maximum distance between identical points
-pointTol = 1e-8
+pointTol = 1e-12
 
 -- | The maximum deviation from one in a dot product to consider vectors parallel
-dirTol = 1e-8
+dirTol = 1e-12
 
 -- | For tagging values that can't have 0 measure when specifying QuickCheck Arbitrarys
 newtype NonNull a = NonNull a deriving Show
@@ -90,7 +90,7 @@ x <~ y = x < y || x =~ y
 
 -- This might not be a good idea, approximate is a relative term
 instance ApproxEq Double where
-        a `approx` b = abs (a - b) < 1e-8
+        a `approx` b = abs (a - b) < 1e-12
 
 -- Three dimensional geometry
 
@@ -143,7 +143,7 @@ type Point2 = Vec2
 -- from a to b
 ls2Normal :: LineSeg Point2 -> Hand -> Vec2
 ls2Normal l RightHanded
-        | magnitude (x,y) < 1e-8  = error "Trying to get normal of zero-magnitude vector"
+        | magnitude (x,y) < 1e-10 = error "Trying to get normal of zero-magnitude vector"
         | otherwise               = normalized (-y, x)
         where (x,y) = lsDispl l
 ls2Normal l LeftHanded = - ls2Normal l RightHanded
