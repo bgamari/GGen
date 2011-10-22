@@ -1,8 +1,8 @@
 # GGen
 
 `GGen` is a G-code generator targetted at 3D additive printers (e.g.
-(RepRap)[http://www.reprap.org/]). It was developed out of frustration with the
-dominant package in this design space, (Skeinforge)[http://www.skeinforge.org].
+[RepRap](http://www.reprap.org/)). It was developed out of frustration with the
+dominant package in this design space, [Skeinforge](http://www.skeinforge.org).
 Written in Haskell, GGen strives to be a clean, fast, and easily verifiable
 alternative to Skeinforge.
 
@@ -112,3 +112,22 @@ correct G code command.
 The `GGen.Render` module exposes a thin wrapper around the Cairo 2D drawing
 library.
 
+### A few words on numerical error
+
+As noted above, numerical error is a persistent problem in the problem space
+which GGen approaches. To properly deal with numerical error is no small task.
+Strictly speaking, tolerances should be derived for each operation through
+error propagation analysis. While Haskell could make this task quite
+transparent, it is not clear that the benefits provided by rigorous error
+analysis would outweigh the costs, both in performance and, more importantly,
+complexity.
+
+All floating point quantities in GGen are represented in
+double-precision. This provides a relative error on the order of $10^-14$. Even
+with propagation of errors over many operations, it is believed that error
+should not exceed $10^-10$ (for small values of many; this hasn't been worked
+out rigorously). Since no known machines can produce prints with anywhere near
+this resolution, we take this number to be our tolerance to numerical error.
+This is implemented in the `ApproxEq` typeclass. Admittedly, this approach
+might sweep too many of the numerical details under the rug, so reconsideration
+may be necessary in the future.
