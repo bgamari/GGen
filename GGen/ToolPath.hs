@@ -4,6 +4,7 @@ module GGen.ToolPath ( outlinePath
                      ) where
 
 import Data.VectorSpace
+import Data.AffineSpace
 import Data.List (foldl', sortBy, deleteBy)
 import Data.Function (on)
 
@@ -19,7 +20,7 @@ concatToolPaths :: [ToolPath] -> ToolPath
 concatToolPaths [] = []
 concatToolPaths tps = f first (tail tps) (tpEnd first)
         where first = head tps
-              tpDist p tp = magnitude (p - tpBegin tp)
+              tpDist p tp = magnitude (p .-. tpBegin tp)
               f :: ToolPath -> [ToolPath] -> Point2 -> ToolPath
               f tp [] _ = tp
               f tp tps pos = let nextToolPaths tp = [ (tpDist pos tp, tp, tps')
@@ -33,39 +34,39 @@ concatToolPaths tps = f first (tail tps) (tpEnd first)
                              in f (tp++next') tps' (tpEnd next)
 
 -- | Extrude path of line segments
-extrudeLineSegPath :: LineSegPath Point2 -> ToolPath
+extrudeLineSegPath :: LineSegPath Vec2 -> ToolPath
 extrudeLineSegPath = map (\l -> ToolMove l (Extrude 1))
 
 -- | Extrude path outlining polygon
-extrudePolygon :: Polygon Point2 -> ToolPath
+extrudePolygon :: Polygon Vec2 -> ToolPath
 extrudePolygon = extrudeLineSegPath . polygonToLineSegPath
 
 -- | Offset polygon boundaries inward or outwards
 -- Positive offset is outwards
-offsetPolygon :: Double -> Polygon Point2 -> Polygon Point2
+offsetPolygon :: Double -> Polygon Vec2 -> Polygon Vec2
 offsetPolygon offset = Polygon . f . polygonToLineSegPath
-        where f :: LineSegPath Point2 -> [Point2]
+        where f :: LineSegPath Vec2 -> [Point2]
               f segs@(s:s':_) = 
                 let p = lsB s
-                    l  = Line (p+ls2Normal s RightHanded)  (offset *^ normalized (lsDispl s))
-                    l' = Line (p+ls2Normal s' RightHanded) (offset *^ normalized (lsDispl s'))
+                    l  = Line (p .+^ ls2Normal s RightHanded)  (offset *^ normalized (lsDispl s))
+                    l' = Line (p .+^ ls2Normal s' RightHanded) (offset *^ normalized (lsDispl s'))
                     IIntersect p' = lineLine2Intersect l l'
                 in p':f (tail segs)
 
 -- | Build the toolpath describing the outline of a slice 
-outlinePath :: [OrientedPolygon Point2] -> ToolPath
+outlinePath :: [OrientedPolygon Vec2] -> ToolPath
 outlinePath polys = concat $ map (extrudePolygon.fst) polys
 
 -- | Clip a line with a set of polygons
-clipLine :: [Polygon Point2] -> Line Point2 -> [LineSeg Point2]
+clipLine :: [Polygon Vec2] -> Line Vec2 -> [LineSeg Vec2]
 clipLine polys line = 
         let inters = concat $ map (linePolygon2Crossings line) polys
-            cmpInter (ax,ay) (bx,by) = case compare ax bx of 
-                                            EQ -> compare ay by
-                                            c  -> c
+            cmpInter (P (ax,ay)) (P (bx,by)) = case compare ax bx of 
+                                                    EQ -> compare ay by
+                                                    c  -> c
             sorted = sortBy cmpInter inters
 
-            f :: [Point2] -> Bool -> [LineSeg Point2]
+            f :: [Point2] -> Bool -> [LineSeg Vec2]
             f points@(a:b:_) fill = if fill then (LineSeg a b) : (f (tail points) False)
                                             else f (tail points) True
             f (a:[]) True = error $ "Unterminated line segment "++show sorted++" while clipping "++show line++" against polygon "++show polys
@@ -73,18 +74,18 @@ clipLine polys line =
         in f sorted True
 
 -- | Figure out regions where infill is necessary
-infillRegions :: [Polygon Point2] -> [Polygon Point2]
+infillRegions :: [Polygon Vec2] -> [Polygon Vec2]
 infillRegions = id
 
-infillPattern :: InfillRatio -> Angle -> Box Point2 -> [Line Point2]
+infillPattern :: InfillRatio -> Angle -> Box Vec2 -> [Line Vec2]
 infillPattern infillRatio infillAngle (a,b) =
         map (\t -> Line (lBegin t) (cos phi, sin phi)) ts
         where ts = map (/40) [-40..40]
               phi = infillAngle / 180 * pi
-              lBegin = lerp a (a + magnitude (b-a) *^ (-sin phi, cos phi))
+              lBegin = alerp a (a .+^ magnitude (b.-.a) *^ (-sin phi, cos phi))
 
 -- | Build the toolpath describing the infill of a slice
-infillPath :: InfillRatio -> Angle -> [OrientedPolygon Point2] -> ToolPath
+infillPath :: InfillRatio -> Angle -> [OrientedPolygon Vec2] -> ToolPath
 infillPath infillRatio infillAngle opolys = 
         let polys = map fst opolys
             regions = infillRegions polys

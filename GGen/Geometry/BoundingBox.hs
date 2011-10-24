@@ -1,30 +1,31 @@
 module GGen.Geometry.BoundingBox ( points2BoundingBox
-                                 , pointsBoundingBox
+                                 , points3BoundingBox
                                  , facesBoundingBox
                                  , polygons2BoundingBox
                                  ) where
 
+import Data.VectorSpace
 import GGen.Geometry.Types
 
-points2BoundingBox :: [Point2] -> Box Point2
-points2BoundingBox [] = ((0,0), (0,0))
+points2BoundingBox :: [Point2] -> Box Vec2
+points2BoundingBox [] = (P (0,0), P (0,0))
 points2BoundingBox points =
-        let (xs,ys) = unzip points
-        in ( (minimum xs, minimum ys)
-           , (maximum xs, maximum ys) )
+        let (xs,ys) = unzip $ map (\(P v)->v) points
+        in ( P (minimum xs, minimum ys)
+           , P (maximum xs, maximum ys) )
 
-pointsBoundingBox :: [Point] -> Box Point
-pointsBoundingBox points =
-        let (xs,ys,zs) = unzip3 points
-        in ( (minimum xs, minimum ys, minimum zs)
-           , (maximum xs, maximum ys, maximum zs) )
+points3BoundingBox :: [Point3] -> Box Vec3
+points3BoundingBox points =
+        let (xs,ys,zs) = unzip3 $ map (\(P v)->v) points
+        in ( P (minimum xs, minimum ys, minimum zs)
+           , P (maximum xs, maximum ys, maximum zs) )
 
-facesBoundingBox :: [Face] -> Box Point
+facesBoundingBox :: [Face] -> Box Vec3
 facesBoundingBox faces =
         let getAllVerts face = let (a,b,c) = faceVertices face
                                in [a,b,c]
-        in pointsBoundingBox $ concat $ map getAllVerts faces
+        in points3BoundingBox $ concat $ map getAllVerts faces
 
-polygons2BoundingBox :: [Polygon Point2] -> Box Point2
+polygons2BoundingBox :: [Polygon Vec2] -> Box Vec2
 polygons2BoundingBox polys = points2BoundingBox $ concat $ map (\(Polygon points) -> points) polys
 

@@ -3,6 +3,7 @@
 module Main(main) where
 
 import Data.VectorSpace
+import Data.AffineSpace
 import Data.Maybe (mapMaybe, maybe)
 import Data.Either (either, partitionEithers)
 import Data.List (isSuffixOf, deleteFirstsBy)
@@ -37,16 +38,16 @@ main = do filename:_ <- getArgs
           stl <- Data.STL.parse filename
           let faces = stlFacets stl
           let (bbMin, bbMax) = facesBoundingBox $ stlFacets stl
-              bbSize = bbMax - bbMin
-              (_,_,zMin) = bbMin
-              (_,_,zMax) = bbMax
-              region@(rMin,rMax) = (bbMin - 0.2*^bbSize, bbMax + 0.2*^bbSize)
+              bbSize = bbMax .-. bbMin
+              P (_,_,zMin) = bbMin
+              P (_,_,zMax) = bbMax
+              region@(rMin,rMax) = (bbMin .-^ 0.2*^bbSize, bbMax .+^ 0.2*^bbSize)
 
-          print $ P.text "Bounding Box" <+> P.vec bbMin <+> P.text "to" <+> P.vec bbMax
+          print $ P.text "Bounding Box" <+> P.point bbMin <+> P.text "to" <+> P.point bbMax
           --print $ P.vcat $ map (\f->P.face f <+> P.text "normal:" <+> (P.vec $ faceNormal f)) faces
           
           let getSlice z = let plane = Plane { planeNormal=(0,0,1)
-                                             , planePoint=bbMin + (0,0,1) ^* z }
+                                             , planePoint=bbMin .+^ (0,0,1) ^* z }
                                opolys = planeSlice plane faces
                            in (z, opolys)
 
@@ -72,20 +73,20 @@ stripSuffix a b
         | a `isSuffixOf` b  = stripSuffix (init a) (init b)
         | otherwise         = Nothing
 
-doToolPath :: String -> Box Point -> (Double, ToolPath) -> IO ()
+doToolPath :: String -> Box Vec3 -> (Double, ToolPath) -> IO ()
 doToolPath rootName region@(rMin,rMax) (z,tp) =
         do printf "Slice Z=%1.2f\n" z
            renderRegionToSVG filename (500,500) region $
                    do renderToolpath tp
         where filename = printf "%s-z%1.2f.svg" rootName z
 
-doSlice :: [Face] -> String -> Box Point -> Double -> IO ()
+doSlice :: [Face] -> String -> Box Vec3 -> Double -> IO ()
 doSlice faces rootName (bbMin,bbMax) z = 
         do printf "Slice Z=%1.2f\n" z
            hFlush stdout
 
            let plane = Plane { planeNormal=(0,0,1)
-                             , planePoint=bbMin + (0,0,1) ^* z }
+                             , planePoint=bbMin .+^ (0,0,1) ^* z }
                opolys = planeSlice plane faces
                filename = printf "%s-z%1.2f-slice.svg" rootName z
 
@@ -97,5 +98,5 @@ doSlice faces rootName (bbMin,bbMax) z =
                    do renderOrientedPolygons opolys
                       --renderToolpath outline
                       --renderToolpath infill
-         where bbSize = bbMax - bbMin
-               region = (bbMin - 0.2*^bbSize, bbMax + 0.2*^bbSize)
+         where bbSize = bbMax .-. bbMin
+               region = (bbMin .-^ 0.2*^bbSize, bbMax .+^ 0.2*^bbSize)

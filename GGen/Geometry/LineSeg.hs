@@ -8,6 +8,7 @@ module GGen.Geometry.LineSeg ( mergeLineSegs
 import Data.List (deleteFirstsBy, foldl')
 import Data.Maybe (mapMaybe, isJust, fromJust)
 import Data.VectorSpace
+import Data.AffineSpace
 import GGen.Geometry.Types
 
 import Test.QuickCheck.All
@@ -53,40 +54,42 @@ mergeLineSegList ls = foldl' mergeLineSegIntoList [] ls
 -- QuickCheck properties
 
 -- | Split a line segment in two and ensure that the pieces are merged
-prop_merge_divided :: LineSeg Point -> Normalized Double -> Bool -> Bool -> Result
+prop_merge_divided :: LineSeg Vec3 -> Normalized Double -> Bool -> Bool -> Result
 prop_merge_divided l (Normalized s) flipA flipB
         | magnitude (lsDispl l) == 0   = rejected
         | otherwise = case m of
                            Just l    -> if passed then succeeded
                                                   else failed {reason="Deviation too large"}
                            Nothing   -> failed {reason="Not merged"}
-                      where f = lerp (lsA l) (lsB l)
+                      where f = alerp (lsA l) (lsB l)
                             a = (if flipA then lsInvert else id) $ LineSeg (f 0) (f s)
                             b = (if flipB then lsInvert else id) $ LineSeg (f s) (f 1)
                             m = tryMergeLineSegs a b
-                            diffBegin = magnitude $ lsA l ^-^ lsA (fromJust m)
-                            diffEnd   = magnitude $ lsB l ^-^ lsB (fromJust m)
+                            diffBegin = magnitude $ lsA l .-. lsA (fromJust m)
+                            diffEnd   = magnitude $ lsB l .-. lsB (fromJust m)
                             passed = diffBegin < 1e-8 && diffEnd < 1e-8
 
 -- | Make sure segments which aren't parallel aren't merged
-prop_dont_merge_nonparallel :: LineSeg Point -> LineSeg Point -> Result
+prop_dont_merge_nonparallel :: LineSeg Vec3 -> LineSeg Vec3 -> Result
 prop_dont_merge_nonparallel a b
         | abs (normalized (lsDispl a) <.> normalized (lsDispl b) - 1) == 0    = rejected
         | otherwise = case tryMergeLineSegs a b of
                                 Just _    -> failed {reason="Inappropriate merge"}
                                 Nothing   -> succeeded
 
-prop_merge_line_seg_into_list :: Vec -> NonZero Vec -> NonZero Double -> Bool
-prop_merge_line_seg_into_list a (NonZero b) (NonZero s) = 
-        let l = LineSeg a b
-            l' = LineSeg b (b + s *^ lsDispl l)
+prop_merge_line_seg_into_list :: Point3 -> NonNull Vec3 -> NonZero Double -> Bool
+prop_merge_line_seg_into_list a (NonNull v) (NonZero s) = 
+        let b = a .+^ v
+            l = LineSeg a b
+            l' = LineSeg b (b .+^ s *^ lsDispl l)
             merged = mergeLineSegIntoList [l] l'
         in length merged == 1
 
-prop_merge_line_seg_list :: Vec -> NonZero Vec -> NonZero Double -> Bool
-prop_merge_line_seg_list a (NonZero b) (NonZero s) = 
-        let l = LineSeg a b
-            l' = LineSeg b (b + s *^ lsDispl l)
+prop_merge_line_seg_list :: Point3 -> NonNull Vec3 -> NonZero Double -> Bool
+prop_merge_line_seg_list a (NonNull v) (NonZero s) = 
+        let b = a .+^ v
+            l = LineSeg a b
+            l' = LineSeg b (b .+^ s *^ lsDispl l)
             merged = mergeLineSegList [l,l']
         in length merged == 1
 

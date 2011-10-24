@@ -10,9 +10,9 @@ module GGen.Geometry.Types ( -- | General
                            , nubPointsWithTol
                            , (=~), (>~), (<~), (/=)
                              -- | Three dimensional geometry
-                           , Vec
-                           , NVec
-                           , Point
+                           , Vec3
+                           , NVec3
+                           , Point3
                            , Face(..)
                            , translateFace
                            , faceFromVertices
@@ -22,6 +22,7 @@ module GGen.Geometry.Types ( -- | General
                            , Point2
                            , ls2Normal
                            -- | n dimensional geometry
+                           , Point(..)
                            , parallel
                            , perpendicular
                            , coincident
@@ -49,6 +50,7 @@ module GGen.Geometry.Types ( -- | General
                            ) where
 
 import Data.VectorSpace
+import Data.AffineSpace
 import Data.Cross
 
 import Test.QuickCheck
@@ -61,16 +63,13 @@ import Test.QuickCheck.All
 import Test.QuickCheck.Property
 
 -- | The maximum distance between identical points
-pointTol = 1e-12
+pointTol = 1e-10
 
 -- | The maximum deviation from one in a dot product to consider vectors parallel
-dirTol = 1e-12
+dirTol = 1e-10
 
 -- | For tagging values that can't have 0 measure when specifying QuickCheck Arbitrarys
 newtype NonNull a = NonNull a deriving Show
---instance (b ~ NonZero a, Arbitrary b) => Arbitrary (NonNull a) where
---        arbitrary = do NonZero a <- arbitrary
---                       return a
 
 class ApproxEq a where
         approx :: a -> a -> Bool
@@ -90,39 +89,49 @@ x <~ y = x < y || x =~ y
 
 -- This might not be a good idea, approximate is a relative term
 instance ApproxEq Double where
-        a `approx` b = abs (a - b) < 1e-12
+        a `approx` b = abs (a - b) < 1e-10
+
+instance ApproxEq v => ApproxEq (Point v) where
+        P a `approx` P b = a `approx` b
 
 -- Three dimensional geometry
 
 -- | Spatial vector (e.g. direction)
-type Vec = (Double, Double, Double)
+type Vec3 = (Double, Double, Double)
 
-instance ApproxEq Vec where approx = coincident
+instance ApproxEq Vec3 where approx = sameDir
+
+instance Arbitrary (NonNull Vec3) where
+        arbitrary = do NonZero a <- arbitrary
+                       NonZero b <- arbitrary
+                       NonZero c <- arbitrary
+                       return $ NonNull (a,b,c)
 
 -- | Unit normalized spatial vector
 -- TODO: Enforce with type system?
-type NVec = Vec
+type NVec3 = Vec3
 
 -- | Spatial point (i.e. location in space)
-type Point = Vec
+type Point3 = Point Vec3
 
--- | Face defined by normal and three vertices
-data Face = Face { faceNormal :: Point
-                 , faceVertices :: (Point,Point,Point)
-                 } deriving (Show, Eq)
+-- | Face defined by unit normal and three vertices
+data Face = Face { faceNormal :: NVec3
+                 , faceVertices :: (Point3,Point3,Point3)
+                 } deriving (Show)
                  
-translateFace :: Face -> Vec -> Face
+translateFace :: Face -> Vec3 -> Face
 translateFace face@(Face {faceVertices=(a,b,c)}) v =
-        face { faceVertices=(a+v, b+v, c+v) }
+        face { faceVertices=(a.+^v, b.+^v, c.+^v) }
 
-faceFromVertices :: (Point, Point, Point) -> Face
-faceFromVertices vs@(v0,v1,v2) = let u = v1 ^-^ v0
-                                     v = v2 ^-^ v1
-                                 in Face (normalized $ u `cross3` v) vs
+faceFromVertices :: (Point3, Point3, Point3) -> Face
+faceFromVertices vs@(a,b,c) = let u = b .-. a
+                                  v = c .-. a
+                              in Face (normalized $ u `cross3` v) vs
 
 instance Arbitrary Face where
-        arbitrary = do NonZero vs <- arbitrary
-                       return $ faceFromVertices vs
+        arbitrary = do p <- arbitrary
+                       NormalizedV n <- arbitrary
+                       return $ Face n p
 
 
 -- Two dimensional geometry
@@ -130,137 +139,161 @@ instance Arbitrary Face where
 -- | Spatial vector (e.g. direction)
 type Vec2 = (Double, Double)
 
-instance ApproxEq Vec2 where approx = coincident
+instance ApproxEq Vec2 where approx = sameDir
+
+instance Arbitrary (NonNull Vec2) where
+        arbitrary = do NonZero a <- arbitrary
+                       NonZero b <- arbitrary
+                       return $ NonNull (a,b)
 
 -- | Unit normalized spatial vector
 type NVec2 = Vec2
 
 -- | Spatial point
-type Point2 = Vec2
+type Point2 = Point Vec2
 
 -- | Find the normal to a line segment in the given direction. ls2Normal
 -- (LineSeg a b) LeftHanded yields a normal pointing to the left as one travels
 -- from a to b
-ls2Normal :: LineSeg Point2 -> Hand -> Vec2
+ls2Normal :: LineSeg Vec2 -> Hand -> Vec2
+ls2Normal l LeftHanded = - ls2Normal l RightHanded
 ls2Normal l RightHanded
         | magnitude (x,y) < 1e-10 = error "Trying to get normal of zero-magnitude vector"
         | otherwise               = normalized (-y, x)
         where (x,y) = lsDispl l
-ls2Normal l LeftHanded = - ls2Normal l RightHanded
 
 
 -- General geometry
 
+-- | A point in an affine-space 
+newtype Point v = P v deriving (Show, Eq)
+
+instance AdditiveGroup v => AffineSpace (Point v) where
+        type Diff (Point v) = v
+        P v1 .-. P v2 = v1 ^-^ v2
+        P v1 .+^ v2   = P (v1 ^+^ v2)
+
+instance Ord v => Ord (Point v) where
+        P a `compare` P b = a `compare` b
+
+instance (Arbitrary v, Ord v) => Arbitrary (Point v) where
+        arbitrary = do v <- arbitrary
+                       return (P v)
+
 -- | Eliminate duplicate coincident points
-nubPoints :: (InnerSpace p, RealFloat (Scalar p)) => [p] -> [p]
+nubPoints :: (InnerSpace v, RealFloat (Scalar v)) => [Point v] -> [Point v]
 nubPoints = nubBy coincident
 
 -- | Eliminate duplicate coincident points with some tolerance
-nubPointsWithTol :: (InnerSpace p, s ~ Scalar p, AdditiveGroup s, RealFloat s) => s -> [p] -> [p]
+nubPointsWithTol :: (InnerSpace v, s ~ Scalar v, AdditiveGroup s, RealFloat s) => s -> [v] -> [v]
 nubPointsWithTol tol = nubBy (\x y->magnitude (x,y) < tol)
 
 -- | Are two vectors strictly parallel to within dirTol?
-sameDir :: (RealFloat (Scalar p), InnerSpace p) => p -> p -> Bool
+sameDir :: (RealFloat (Scalar v), InnerSpace v) => v -> v -> Bool
 sameDir a b = 0 <= dot && dot < realToFrac dirTol
         where dot = 1 - normalized a <.> normalized b
 
 -- | Are two vectors parallel (or antiparallel) to within dirTol?
-parallel :: (RealFloat (Scalar p), InnerSpace p) => p -> p -> Bool
+parallel :: (RealFloat (Scalar v), InnerSpace v) => v -> v -> Bool
 parallel a b = 1 - abs (normalized a <.> normalized b) < realToFrac dirTol
 
 -- | Are two vectors perpendicular to within dirTol?
-perpendicular :: (RealFloat (Scalar p), InnerSpace p) => p -> p -> Bool
+perpendicular :: (RealFloat (Scalar v), InnerSpace v) => v -> v -> Bool
 perpendicular a b = abs (normalized a <.> normalized b) < realToFrac dirTol
 
--- | Do two vectors identify the same point to within pointTol?
-coincident :: (RealFloat (Scalar p), InnerSpace p) => p -> p -> Bool
-coincident a b = magnitude (a ^-^ b) < realToFrac pointTol
+-- | Are two points equal to within pointTol?
+coincident :: (RealFloat (Scalar v), InnerSpace v) => Point v -> Point v -> Bool
+coincident a b = magnitude (a .-. b) < realToFrac pointTol
 
 -- | Cuboid defined by two opposite corners
-type Box p = (p, p)
+type Box v = (Point v, Point v)
 
 -- | Line segment defined by two terminal points
-data LineSeg p = LineSeg { lsA :: p
-                         , lsB :: p
+data LineSeg v = LineSeg { lsA :: Point v
+                         , lsB :: Point v
                          } deriving (Show)
 
-instance (InnerSpace p, RealFloat (Scalar p)) => ApproxEq (LineSeg p) where
+instance (InnerSpace v, RealFloat (Scalar v)) => ApproxEq (LineSeg v) where
         u `approx` v  = lsA u `coincident` lsA v && lsB u `coincident` lsB v
 
 -- | Invert the order of line segment termini
-lsInvert :: LineSeg p -> LineSeg p
+lsInvert :: LineSeg v -> LineSeg v
 lsInvert (LineSeg a b) = LineSeg b a
 
 -- | Displacement of a line segment
-lsDispl :: VectorSpace p => LineSeg p -> p
-lsDispl (LineSeg a b) = b ^-^ a
+lsDispl :: VectorSpace v => LineSeg v -> v
+lsDispl (LineSeg a b) = b .-. a
 
-instance (Arbitrary p, VectorSpace p) => Arbitrary (LineSeg p) where
+instance (Arbitrary v, Ord v, VectorSpace v) => Arbitrary (LineSeg v) where
         arbitrary = (liftM2 LineSeg) arbitrary arbitrary
 
-instance (Arbitrary p, Ord p, Num p, VectorSpace p) => Arbitrary (NonNull (LineSeg p)) where
+instance (Arbitrary v, Arbitrary (NonNull v), Ord v, Num v, VectorSpace v) => Arbitrary (NonNull (LineSeg v)) where
         arbitrary = do a <- arbitrary
-                       NonZero d <- arbitrary
-                       return $ NonNull $ LineSeg a (a+d)
+                       NonNull d <- arbitrary
+                       return $ NonNull $ LineSeg a (a.+^d)
 
 -- | A contiguous path of line segments
-type LineSegPath p = [LineSeg p]
+type LineSegPath v = [LineSeg v]
 
 -- | Line defined by point and direction
-data Line p = Line { lPoint :: p
-                   , lDir :: p -- Normalized
+data Line v = Line { lPoint :: Point v
+                   , lDir :: v -- Normalized
                    } deriving (Show)
 
-instance (InnerSpace p, RealFloat (Scalar p)) => ApproxEq (Line p) where
+instance (InnerSpace v, RealFloat (Scalar v)) => ApproxEq (Line v) where
         u `approx` v  = lPoint u `coincident` lPoint v && lDir u `parallel` lDir v
 
-instance (Scalar p ~ s, Floating s, Arbitrary p, Ord p, Num p, InnerSpace p) => Arbitrary (Line p) where
+instance (Scalar v ~ s, Floating s, Arbitrary v, Ord v, Num v, InnerSpace v) => Arbitrary (Line v) where
         arbitrary = do point <- arbitrary
                        NormalizedV dir <- arbitrary
                        return $ Line point dir
 
 -- | Ray defined by start point and direction
-data Ray p = Ray { rBegin :: p
-                 , rDir :: p -- Normalized
+data Ray v = Ray { rBegin :: Point v
+                 , rDir :: v -- Normalized
                  } deriving (Show)
 
-instance (InnerSpace p, RealFloat (Scalar p)) => ApproxEq (Ray p) where
+instance (InnerSpace v, RealFloat (Scalar v)) => ApproxEq (Ray v) where
         u `approx` v  = rBegin u `coincident` rBegin v && rDir u `sameDir` rDir v
 
-instance (Scalar p ~ s, Floating s, Arbitrary p, Ord p, Num p, InnerSpace p) => Arbitrary (Ray p) where
+instance (Scalar v ~ s, Floating s, Arbitrary v, Ord v, Num v, InnerSpace v) => Arbitrary (Ray v) where
         arbitrary = do point <- arbitrary
                        NormalizedV dir <- arbitrary
                        return $ Ray point dir
 
 -- | Plane defined by point and normal
-data Plane p = Plane { planeNormal :: p -- Normalized
-                     , planePoint :: p
+data Plane v = Plane { planeNormal :: v -- Normalized
+                     , planePoint :: Point v
                      } deriving (Show, Eq)
 
-instance (InnerSpace p, RealFloat (Scalar p)) => ApproxEq (Plane p) where
+instance (InnerSpace v, RealFloat (Scalar v)) => ApproxEq (Plane v) where
         u `approx` v  = planeNormal u `parallel` planeNormal v && planePoint u `coincident` planePoint v
 
 -- | Project a vector onto a plane
-projInPlane :: (Num p, InnerSpace p) => Plane p -> p -> p
+projInPlane :: (Num v, InnerSpace v) => Plane v -> v -> v
 projInPlane plane x = x - n ^* (n <.> x)
                       where n = planeNormal plane
 
-instance (Arbitrary p, Ord p, Num p, InnerSpace p, Floating (Scalar p)) => Arbitrary (Plane p) where
+instance (Arbitrary v, Ord v, Num v, InnerSpace v, Floating (Scalar v)) => Arbitrary (Plane v) where
         arbitrary = do point <- arbitrary
                        NormalizedV normal <- arbitrary
                        return $ Plane {planeNormal=normal, planePoint=point}
 
 -- | Closed polygon defined by a series of connected points
 -- The point list should not be closed (i.e. head p /= last p)
-newtype Polygon p = Polygon [p] deriving (Show, Eq)
+newtype Polygon v = Polygon [Point v] deriving (Show, Eq)
 
-instance (InnerSpace p, RealFloat (Scalar p)) => ApproxEq (Polygon p) where
+instance (InnerSpace v, RealFloat (Scalar v)) => ApproxEq (Polygon v) where
         (Polygon u) `approx` (Polygon v)  = and $ zipWith coincident u v
 
-instance (s ~ Scalar p, Floating s, Arbitrary p, InnerSpace p, Ord p, Num p) => Arbitrary (Polygon p) where
-        arbitrary = do let unNonZero (NonZero a) = a
-                       points <- (liftM $ map unNonZero) arbitrary
-                       return $ Polygon $ points++[head points]
+-- TODO: Handle n-gons
+instance (s ~ Scalar v, Floating s, Arbitrary v, Arbitrary (NonNull v), InnerSpace v, Ord v, Num v) => Arbitrary (Polygon v) where
+        arbitrary = do a <- arbitrary
+                       NonNull b <- arbitrary
+                       NonNull c <- arbitrary
+                       let displs = (b:c:[])
+                           points = scanl (.+^) a displs
+                       return $ Polygon points
 
 -- | Right- or left-handedness
 data Hand = LeftHanded | RightHanded deriving (Show, Eq)
@@ -270,7 +303,7 @@ data Hand = LeftHanded | RightHanded deriving (Show, Eq)
 -- points are given in clockwise order, an oriented polygon with right-handed
 -- orientation will have its normal facing inward. For polygons represented
 -- printed areas, the normal points away from the filled body.
-type OrientedPolygon p = (Polygon p, Hand)
+type OrientedPolygon v = (Polygon v, Hand)
 
 
 -- Polytope intersection
@@ -316,14 +349,14 @@ mapIntersectionDropDegen f = mapMaybe g
 -- QuickCheck properties
 
 -- Properties for lsInvertDispl
-prop_invert_displacement :: LineSeg Point -> Bool
+prop_invert_displacement :: LineSeg Vec3 -> Bool
 prop_invert_displacement l = (lsDispl $ lsInvert l) == (negateV $ lsDispl l)
 
 -- Properties for perpendicular
-prop_perpendicular_perp :: NonZero Vec -> NonZero Vec -> Bool
+prop_perpendicular_perp :: NonZero Vec3 -> NonZero Vec3 -> Bool
 prop_perpendicular_perp (NonZero u) (NonZero v) = perpendicular u (u `cross3` v)
 
-prop_perpendicular_par :: Vec -> Double -> Bool
+prop_perpendicular_par :: Vec3 -> Double -> Bool
 prop_perpendicular_par u a = not $ perpendicular u (u ^* a)
 
 runTests = $quickCheckAll

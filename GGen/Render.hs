@@ -17,69 +17,72 @@ module GGen.Render (
 
 import Graphics.Rendering.Cairo
 import Data.VectorSpace
+import Data.AffineSpace
 
 import GGen.Geometry.Types
 import GGen.Types
 
 -- | Rescale and center a surface of size (w,h) for region (rmin,rmax)
-rescaleForRegion :: (Double, Double) -> (Point, Point) -> Render ()
+rescaleForRegion :: (Double, Double) -> Box Vec3 -> Render ()
 rescaleForRegion (w,h) (rmin,rmax) = 
         do scale w h
            translate 0.5 0.5
            scale s s
            translate (-cx) (-cy)
            setLineWidth 4e-1
-        where (rminX, rminY, _) = rmin
-              (rmaxX, rmaxY, _) = rmax
-              (rw, rh) = (rmaxX-rminX, rmaxY-rminY)
+        where (rw, rh, _) = rmax .-. rmin
               viewRatio = w/h
               regionRatio = rw/rh
-              (cx, cy, _) = rmin + (rmax - rmin) ^/ 2
+              P (cx, cy, _) = rmin .+^ (rmax .-. rmin) ^/ 2
               widthConstrained = viewRatio < regionRatio
               s = if widthConstrained then 1/rw
                                       else 1/rh
 
 -- | Draws a line segment path
-drawSegment :: LineSeg Point -> Render ()
-drawSegment (LineSeg (ux,uy,uz) (vx,vy,vz)) =
+drawSegment :: LineSeg Vec3 -> Render ()
+drawSegment (LineSeg (P (ux,uy,_)) (P (vx,vy,_))) =
         do lineTo ux uy
            lineTo vx vy
+
+moveToPt, lineToPt :: Point2 -> Render ()
+lineToPt (P (x,y)) = lineTo x y
+moveToPt (P (x,y)) = moveTo x y
 
 -- | Draws a line segment path
-drawSegment2 :: LineSeg Point2 -> Render ()
-drawSegment2 (LineSeg (ux,uy) (vx,vy)) =
-        do lineTo ux uy
-           lineTo vx vy
+drawSegment2 :: LineSeg Vec2 -> Render ()
+drawSegment2 (LineSeg u v) = lineToPt u >> lineToPt v
 
 
-renderPath2 :: LineSegPath Point2 -> Render ()
+renderPath2 :: LineSegPath Vec2 -> Render ()
 renderPath2 path = 
         do newPath
-           mapM_ drawSegment2 $ path
+           mapM_ drawSegment2 path
            stroke
 
-renderArrow :: LineSeg Point2 -> Render ()
-renderArrow l@(LineSeg (ax,ay) (bx,by)) =
+renderArrow :: LineSeg Vec2 -> Render ()
+renderArrow l@(LineSeg a b) =
         do drawSegment2 l
            stroke
            let size = magnitude $ lsDispl l
-               angle = atan2 (by-ay) (bx-ax)
+               (dx,dy) = a .-. b
+               angle = atan2 dy dx
                aLength = 0.15 * size
                aAngle = 20 * pi / 180
-           moveTo bx by
-           lineTo (bx - aLength * cos (angle-aAngle)) (by - aLength * sin (angle-aAngle))
-           lineTo (bx - aLength * cos (angle+aAngle)) (by - aLength * sin (angle+aAngle))
-           lineTo bx by
+               f a = (cos a, sin a)
+           moveToPt b
+           lineToPt $ b .-^ aLength *^ f (angle-aAngle)
+           lineToPt $ b .-^ aLength *^ f (angle+aAngle)
+           lineToPt b
            fill 
 
-renderRegionToSVG :: FilePath -> (Double,Double) -> (Point,Point) -> Render () -> IO ()
+renderRegionToSVG :: FilePath -> (Double,Double) -> Box Vec3 -> Render () -> IO ()
 renderRegionToSVG filename (w,h) region action =
         withSVGSurface filename w h (flip renderWith $ do rescaleForRegion (w,h) region
                                                           action
                                                           showPage)
 
 -- | Render polygons
-renderPolygons2 :: [Polygon Point2] -> Render ()
+renderPolygons2 :: [Polygon Vec2] -> Render ()
 renderPolygons2 polys =
         do newPath
            setFillRule FillRuleEvenOdd
@@ -93,20 +96,20 @@ renderPolygons2 polys =
            stroke
 
 -- | Draw a 2D polygon
-drawPolygon2 :: Polygon Point2 -> Render ()
-drawPolygon2 (Polygon points) = do (uncurry moveTo) $ head points
-                                   mapM_ (uncurry lineTo) points
-                                   (uncurry lineTo) $ head points
+drawPolygon2 :: Polygon Vec2 -> Render ()
+drawPolygon2 (Polygon points) = do moveToPt $ head points
+                                   mapM_ lineToPt points
+                                   lineToPt $ head points
 
 -- | Draw a polygon path
-drawPolygon :: Polygon Point -> Render ()
+drawPolygon :: Polygon Vec3 -> Render ()
 drawPolygon (Polygon points) = do moveTo x y
-                                  mapM_ (\(x,y,z) -> lineTo x y) points
+                                  mapM_ (\(P (x,y,z)) -> lineTo x y) points
                                   lineTo x y
-                               where (x,y,_) = head points
+                               where P (x,y,_) = head points
 
 -- | Render 2D oriented polygons
-renderOrientedPolygons :: [OrientedPolygon Point2] -> Render ()
+renderOrientedPolygons :: [OrientedPolygon Vec2] -> Render ()
 renderOrientedPolygons polys =
         do setFillRule FillRuleEvenOdd
            newPath
@@ -132,6 +135,6 @@ renderToolpath tp =
            mapM_ f tp
 
 renderPoint2 :: Point2 -> Render ()
-renderPoint2 (x,y) =
-        arc x y 1 0 (2*pi) >> fill
+renderPoint2 (P (x,y)) =
+        arc x y 0.5 0 (2*pi) >> fill
 

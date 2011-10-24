@@ -1,6 +1,7 @@
 module Data.STL.ASCII (Data.STL.ASCII.parse) where
 
 import Data.VectorSpace
+import Data.AffineSpace
 import Data.Cross
 import Data.Attoparsec
 import qualified Data.Attoparsec.Char8 as C
@@ -36,11 +37,11 @@ facet = do C.skipSpace
 
            ---- Some software leaves the normal vectors zeroed
            let normal = if magnitude n == 0
-                           then normalized $ (b ^-^ a) `cross3` (c-a)
+                           then normalized $ (b .-. a) `cross3` (c .-. a)
                            else n
            return $ Face { faceNormal=normal
                          , faceVertices=(a,b,c) }
-        where vertex = C.skipSpace >> sstring "vertex" >> vector
+        where vertex = C.skipSpace >> sstring "vertex" >> vector >>= (return . P)
            
 stlFile = do sstring "solid"
              C.skipSpace

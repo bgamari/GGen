@@ -40,9 +40,9 @@ postlude = [ "# Begin postlude"
 
 -- TODO: Retract filament
 toolMoveToGCode :: ToolMove -> GCommand
-toolMoveToGCode (ToolMove (LineSeg _ (x,y)) Dry) =
+toolMoveToGCode (ToolMove (LineSeg _ (P (x,y))) Dry) =
         printf "G1 X%1.2f Y%1.2f" x y
-toolMoveToGCode (ToolMove l@(LineSeg _ (x,y)) (Extrude e)) =
+toolMoveToGCode (ToolMove l@(LineSeg _ (P (x,y))) (Extrude e)) =
         printf "G1 X%1.2f Y%1.2f E%1.2f" x y (e*magnitude (lsDispl l)/eRate)
 
 sliceToGCode :: (Double, ToolPath) -> [GCommand]
