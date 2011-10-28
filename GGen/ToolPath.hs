@@ -22,21 +22,24 @@ import GGen.Types
 -- | Patch together a list of toolpaths into a single toolpath minimizing
 -- unnecessary motion
 concatToolPaths :: [ToolPath] -> ToolPath
-concatToolPaths [] = []
-concatToolPaths tps = f first (tail tps) (tpEnd first)
-        where first = head tps
+concatToolPaths tps 
+        | null tps'  = []
+        | otherwise = f first (tail tps') (tpEnd first)
+        where tps' = filter (not.null) tps
+              first = head tps'
               tpDist p tp = magnitude (p .-. tpBegin tp)
               f :: ToolPath -> [ToolPath] -> Point2 -> ToolPath
               f tp [] _ = tp
-              f tp tps pos = let nextToolPaths tp = [ (tpDist pos tp, tp, tps')
-                                                    , (tpDist pos inverted, inverted, tps') ]
-                                                  where inverted = tpInvert tp
-                                                        tps' = deleteBy approx tp tps
-                                 (_, next, tps') = head
-                                                 $ sortBy (compare `on` (\(d,_,_)->d))
-                                                 $ concat $ map nextToolPaths tps
-                                 next' = ToolMove (LineSeg pos (tpBegin next)) Dry : next
-                             in f (tp++next') tps' (tpEnd next)
+              f tp rTps pos =
+                      let nextToolPaths tp = [ (tpDist pos tp, tp, rTps')
+                                             , (tpDist pos inverted, inverted, rTps') ]
+                                           where inverted = tpInvert tp
+                                                 rTps' = deleteBy approx tp rTps
+                          (_, next, rTps') = head
+                                           $ sortBy (compare `on` (\(d,_,_)->d))
+                                           $ concat $ map nextToolPaths rTps
+                          next' = ToolMove (LineSeg pos (tpBegin next)) Dry : next
+                      in f (tp++next') rTps' (tpEnd next)
 
 -- | Extrude path of line segments
 extrudeLineSegPath :: LineSegPath Vec2 -> ToolPath
