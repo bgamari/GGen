@@ -28,8 +28,10 @@ type ToolPath = [ToolMove]
 
 tpBegin, tpEnd :: ToolPath -> Point2
 -- | Start point of a toolpath
+tpBegin [] = error "Empty toolpath has no beginning"
 tpBegin tp = p where ToolMove (LineSeg p _) _ = head tp
 -- | End point of a toolpath
+tpEnd [] = error "Empty toolpath has no end"
 tpEnd tp = p where ToolMove (LineSeg _ p) _ = last tp
 
 -- | Reverse a toolpath
