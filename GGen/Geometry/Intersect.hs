@@ -99,7 +99,7 @@ faceLineIntersect (Face {faceVertices=(P v0,P v1,P v2)}) (Line {lPoint=P p, lDir
 -- | Check whether a point sits on a plane
 pointOnPlane :: Plane Vec3 -> Point3 -> Bool
 pointOnPlane (Plane {planePoint=v, planeNormal=n}) p =
-        abs ((p.-.v) <.> n) < 1e-12
+        abs ((p.-.v) <.> n) =~ 0
 
 -- | Find point of intersection of a plane and line
 planeLineIntersect :: Plane Vec3 -> Line Vec3 -> Intersection Point3
