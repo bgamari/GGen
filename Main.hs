@@ -60,7 +60,6 @@ main = do filename:_ <- getArgs
               toolpaths = zip sliceZs $ evalState (mapM (toolPath infillGen) slices) (initialState infillGen)
 
           putStrLn "Rendering Slices..."
-          --mapM_ (\z->doSlice faces root (bbMin,bbMax) z) sliceZs
           mapM_ (doToolPath root region) toolpaths
 
           putStrLn "Generating GCode..."
@@ -83,23 +82,3 @@ doToolPath rootName region@(rMin,rMax) (z,tp) =
                    do renderToolpath tp
         where filename = printf "%s-z%1.2f.svg" rootName z
 
-doSlice :: [Face] -> String -> Box Vec3 -> Double -> IO ()
-doSlice faces rootName (bbMin,bbMax) z = 
-        do printf "Slice Z=%1.2f\n" z
-           hFlush stdout
-
-           let plane = Plane { planeNormal=(0,0,1)
-                             , planePoint=bbMin .+^ (0,0,1) ^* z }
-               opolys = planeSlice plane faces
-               filename = printf "%s-z%1.2f-slice.svg" rootName z
-
-           let outline = outlinePath opolys
-               infill = infillPath 0.5 45 opolys
-
-           --renderRegionToSVG filename (500,500) region (renderPolygons2 $ map fst ps)
-           renderRegionToSVG filename (500,500) region $
-                   do renderOrientedPolygons opolys
-                      --renderToolpath outline
-                      --renderToolpath infill
-         where bbSize = bbMax .-. bbMin
-               region = (bbMin .-^ 0.2*^bbSize, bbMax .+^ 0.2*^bbSize)
