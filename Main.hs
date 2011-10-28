@@ -1,4 +1,4 @@
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TupleSections, PackageImports #-}
 
 module Main(main) where
 
@@ -10,6 +10,7 @@ import Data.List (isSuffixOf, deleteFirstsBy)
 import Text.Printf
 import System.IO
 import System.Environment (getArgs)
+import "mtl" Control.Monad.State (evalState)
 
 import Data.STL
 import GGen.Geometry
@@ -31,6 +32,8 @@ import Control.Monad (liftM)
 sliceFudge = 1e-4
 
 sliceZStep = 0.2
+
+infillGen = HexInfill { infillRatio=0.5 }
 
 main = do filename:_ <- getArgs
           let root = maybe (error "Filename should end in .stl") id
@@ -54,7 +57,7 @@ main = do filename:_ <- getArgs
           let nSlices = (zMax-zMin) / sliceZStep
               sliceZs = map (\i->zMin + i*sliceZStep + sliceFudge) [0..nSlices]
               slices = map getSlice sliceZs
-              toolpaths = toolPath 0.5 slices
+              toolpaths = zip sliceZs $ evalState (mapM (toolPath infillGen) slices) (initialState infillGen)
 
           putStrLn "Rendering Slices..."
           --mapM_ (\z->doSlice faces root (bbMin,bbMax) z) sliceZs

@@ -1,12 +1,17 @@
+{-# LANGUAGE PackageImports, TypeFamilies #-}
+
 module GGen.ToolPath ( outlinePath
-                     , infillPath
+                     , infillPathM
                      , toolPath
+                     , HexInfill(..)
+                     , initialState
                      ) where
 
 import Data.VectorSpace
 import Data.AffineSpace
 import Data.List (foldl', sortBy, deleteBy)
 import Data.Function (on)
+import "mtl" Control.Monad.State
 
 import GGen.Geometry.Types
 import GGen.Geometry.Polygon (polygonToLineSegPath, linePolygon2Crossings)
@@ -73,35 +78,41 @@ clipLine polys line =
             f _ _ = []
         in f sorted True
 
--- | Figure out regions where infill is necessary
-infillRegions :: [Polygon Vec2] -> [Polygon Vec2]
-infillRegions = id
+class InfillGenerator t where
+        type IState t :: *
+        initialState :: t -> IState t
+        pattern :: t -> Box Vec2 -> State (IState t) [Line Vec2]
 
-infillPattern :: InfillRatio -> Angle -> Box Vec2 -> [Line Vec2]
-infillPattern infillRatio infillAngle (a,b) =
-        map (\t -> Line (lBegin t) (cos phi, sin phi)) ts
-        where ts = map (/40) [-40..40]
-              phi = infillAngle / 180 * pi
-              lBegin = alerp a (a .+^ magnitude (b.-.a) *^ (-sin phi, cos phi))
+data HexInfill = HexInfill { infillRatio :: Double } deriving (Show)
+
+instance InfillGenerator HexInfill where
+        type IState HexInfill = [Angle]
+        initialState _ = cycle [0, 60, 120]
+        pattern a = polygonInfillPattern (infillRatio a)
+
+polygonInfillPattern :: InfillRatio -> Box Vec2 -> State [Angle] [Line Vec2]
+polygonInfillPattern infillRatio (a,b) =
+     do infillAngle:rest <- get
+        put rest
+        let ts = map (/40) [-40..40]
+            phi = infillAngle / 180 * pi
+            lBegin = alerp a (a .+^ magnitude (b.-.a) *^ (-sin phi, cos phi))
+        return $ map (\t -> Line (lBegin t) (cos phi, sin phi)) ts
 
 -- | Build the toolpath describing the infill of a slice
-infillPath :: InfillRatio -> Angle -> [OrientedPolygon Vec2] -> ToolPath
-infillPath infillRatio infillAngle opolys = 
-        let polys = map fst opolys
-            regions = infillRegions polys
-            bb = polygons2BoundingBox polys
-            pattern = infillPattern infillRatio infillAngle bb
-            clipped = concat $ map (clipLine polys) pattern
-        in concatToolPaths $ map (\l->extrudeLineSegPath [l]) clipped
+infillPathM :: InfillGenerator a => a -> [OrientedPolygon Vec2] -> State (IState a) ToolPath
+infillPathM infillGen opolys = 
+        do let polys = map fst opolys
+               bb = polygons2BoundingBox polys
+           pat <- pattern infillGen bb
+           let clipped = concat $ map (clipLine polys) pat
+           return $ concatToolPaths $ map (\l->extrudeLineSegPath [l]) clipped
 
 -- | Build the toolpaths of a stack of slices
-toolPath :: InfillRatio -> [Slice] -> [(Double, ToolPath)]
-toolPath infillRatio slices = zipWith f slices (cycle [0, 60, 120])
-        where f :: Slice -> Double -> (Double, ToolPath)
-              f (z,opolys) infillAngle =
-                      let outline = outlinePath opolys
-                          infill = infillPath infillRatio infillAngle opolys
-                      in (z, outline ++ infill)
+toolPath :: InfillGenerator a => a -> Slice -> State (IState a) ToolPath
+toolPath infillGen (_,opolys) = 
+        do infill <- infillPathM infillGen opolys
+           return $ concatToolPaths [outlinePath opolys, infill]
 
 -- QuickCheck properties
 
