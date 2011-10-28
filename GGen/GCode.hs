@@ -29,15 +29,17 @@ extrusionArea = pi * (extrusionDia/2)**2
 -- | Amount of filament axis motion to extrude the given volume
 eLength v = v / filamentArea / eSlipRate
 
-prelude = [ "# Begin prelude"
+comment s = "; " ++ s
+
+prelude = [ comment "Begin prelude"
           , "G161 X0 Y0 Z0" 
-          , "# End prelude"
+          , comment "End prelude"
           ]
 
-postlude = [ "# Begin postlude"
+postlude = [ comment "Begin postlude"
           , "G1 Z10"
           , "G1 X0 Y0"
-          , "# End postlude"
+          , comment "End postlude"
           ]
 
 -- TODO: Retract filament
@@ -50,7 +52,7 @@ toolMoveToGCode (ToolMove l@(LineSeg _ (P (x,y))) (Extrude e)) =
 
 sliceToGCode :: (Double, ToolPath) -> [GCommand]
 sliceToGCode (z,tp) =
-        [ printf "# Slice Z=%1.2f" z
+        [ comment $ printf "Slice Z=%1.2f" z
         , printf "G1 Z%1.2f" z
         ] ++ map toolMoveToGCode tp
 
