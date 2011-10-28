@@ -33,6 +33,8 @@ comment s = "; " ++ s
 
 prelude = [ comment "Begin prelude"
           , "G161 X0 Y0 Z0" 
+          , "G1 X80 Y50 Z1"
+          , "G92 X0 Y0 Z0"
           , comment "End prelude"
           ]
 
