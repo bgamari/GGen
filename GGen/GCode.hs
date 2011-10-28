@@ -23,9 +23,11 @@ extrusionDia = 0.3 -- millimeters
 -- slipping, 1 means no slip)
 eSlipRate = 1
 
--- | True volume extruded per mm E axis motion
-eRate = filamentArea / eSlipRate
+-- | Cross sectional area of extrudant
+extrusionArea = pi * (extrusionDia/2)**2
 
+-- | Amount of filament axis motion to extrude the given volume
+eLength v = v / filamentArea / eSlipRate
 
 prelude = [ "# Begin prelude"
           , "G161 X0 Y0 Z0" 
@@ -43,7 +45,8 @@ toolMoveToGCode :: ToolMove -> GCommand
 toolMoveToGCode (ToolMove (LineSeg _ (P (x,y))) Dry) =
         printf "G1 X%1.2f Y%1.2f" x y
 toolMoveToGCode (ToolMove l@(LineSeg _ (P (x,y))) (Extrude e)) =
-        printf "G1 X%1.2f Y%1.2f E%1.2f" x y (e*magnitude (lsDispl l)/eRate)
+        printf "G1 X%1.2f Y%1.2f E%1.2f" x y (eLength eVol)
+        where eVol = e * magnitude (lsDispl l) * extrusionArea
 
 sliceToGCode :: (Double, ToolPath) -> [GCommand]
 sliceToGCode (z,tp) =
