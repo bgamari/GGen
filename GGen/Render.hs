@@ -63,10 +63,10 @@ renderArrow :: LineSeg Vec2 -> Render ()
 renderArrow l@(LineSeg a b) =
         do drawSegment2 l
            stroke
-           let size = magnitude $ lsDispl l
-               (dx,dy) = a .-. b
+           let (dx,dy) = lsDispl l
                angle = atan2 dy dx
-               aLength = 0.15 * size
+               --aLength = 0.15 * (magnitude $ lsDispl l)
+               aLength = 2
                aAngle = 20 * pi / 180
                f a = (cos a, sin a)
            moveToPt b
