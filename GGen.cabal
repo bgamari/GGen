@@ -50,7 +50,3 @@ Executable GGen
   Main-is:              Main.hs
   Build-depends:        base, random, cairo, vector-space, QuickCheck, binary, attoparsec, data-binary-ieee754, pretty, bytestring, mtl
   
-Executable Print
-  Main-is:              Print.hs
-  Build-depends:        base, text, serialport, cmdargs, haskeline, unix
-
