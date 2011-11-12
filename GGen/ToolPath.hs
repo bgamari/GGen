@@ -97,7 +97,7 @@ polygonInfillPattern :: InfillRatio -> Box Vec2 -> State [Angle] [Line Vec2]
 polygonInfillPattern infillRatio (a,b) =
      do infillAngle:rest <- get
         put rest
-        let ts = map (/40) [-40..40]
+        let ts = map (/20) [-40..40]
             phi = infillAngle / 180 * pi
             lBegin = alerp a (a .+^ magnitude (b.-.a) *^ (-sin phi, cos phi))
         return $ map (\t -> Line (lBegin t) (cos phi, sin phi)) ts

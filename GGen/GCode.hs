@@ -17,11 +17,11 @@ filamentDia = 3 -- millimeters
 filamentArea = pi * (filamentDia/2)**2
 
 -- | Diameter of extrudant
-extrusionDia = 0.35 -- millimeters
+extrusionDia = 0.4 -- millimeters
 
 -- | The ratio of actual feed distance to E axis distance (0 means completely
 -- slipping, 1 means no slip)
-eSlipRate = 3
+eSlipRate = 2
 
 -- | Cross sectional area of extrudant
 extrusionArea = pi * (extrusionDia/2)**2
@@ -37,21 +37,22 @@ prelude = [ comment "Begin prelude"
           , "G161 X0 Y0 Z0" 
 	  , "G1 Z1"
           , "G1 X80 Y50"
-	  , "G1 Z0.25"
+	  , "G1 Z0.30"
           , "G92 X0 Y0 Z0"
           , "F 300"
           , comment "End prelude"
           ]
 
 layer1Postlude = [ comment "Layer 1 postlude"
-                 , "F600"
+                 , "F500"
 		 , comment "End layer 1 postlude"
 		 ]
 
 postlude = [ comment "Begin postlude"
-          , "G1 Z10"
-          , "G1 X0 Y0"
+          , "G1 Z20"
+          , "G161 X0 Y0"
           , "M104 S0"
+          , "M140 S0"
           , comment "End postlude"
           ]
 

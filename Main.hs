@@ -31,7 +31,7 @@ import Control.Monad (liftM)
 -- avoid these problems, even with nice even sliceZSteps.
 sliceFudge = 1e-4
 
-sliceZStep = 0.39
+sliceZStep = 0.4
 
 infillGen = HexInfill { infillRatio=0.2 }
 
