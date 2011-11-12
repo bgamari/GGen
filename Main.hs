@@ -31,9 +31,9 @@ import Control.Monad (liftM)
 -- avoid these problems, even with nice even sliceZSteps.
 sliceFudge = 1e-4
 
-sliceZStep = 0.2
+sliceZStep = 0.39
 
-infillGen = HexInfill { infillRatio=0.5 }
+infillGen = HexInfill { infillRatio=0.2 }
 
 main = do filename:_ <- getArgs
           let root = maybe (error "Filename should end in .stl") id
