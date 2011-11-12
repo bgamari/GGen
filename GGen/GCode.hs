@@ -1,9 +1,12 @@
 module GGen.GCode ( slicesToGCode
                   , GCommand
+                  , GCodeSettings(..)
+                  , comment
                   ) where
 
 import Text.Printf
 import Data.VectorSpace
+import Control.Monad.Trans.State
 
 import GGen.Geometry.Types
 import GGen.Types
@@ -31,49 +34,50 @@ eLength v = v / filamentArea * eSlipRate
 
 comment s = "; " ++ s
 
-prelude = [ comment "Begin prelude"
-          , "F 1000"
-	  , "G1 Z5"
-          , "G161 X0 Y0 Z0" 
-	  , "G1 Z1"
-          , "G1 X80 Y50"
-	  , "G1 Z0.30"
-          , "G92 X0 Y0 Z0"
-          , "F 300"
-          , comment "End prelude"
-          ]
-
-layer1Postlude = [ comment "Layer 1 postlude"
-                 , "F500"
-		 , comment "End layer 1 postlude"
-		 ]
-
-postlude = [ comment "Begin postlude"
-          , "G1 Z20"
-          , "G161 X0 Y0"
-          , "M104 S0"
-          , "M140 S0"
-          , comment "End postlude"
-          ]
+data GCodeSettings = GCodeSettings
+        { gcPrelude :: [GCommand]
+        , gcLayerPrelude :: Int -> Double -> [GCommand]
+        , gcLayerPostlude :: Int -> Double -> [GCommand]
+        , gcPostlude :: [GCommand]
+        , gcRetractMinDist :: Double
+        , gcRetractLength :: Double
+        , gcRetractRate :: Double
+        } deriving (Show, Eq)
 
 -- TODO: Retract filament
-toolMoveToGCode :: ToolMove -> GCommand
-toolMoveToGCode (ToolMove (LineSeg _ (P (x,y))) Dry) =
-        printf "G1 X%1.3f Y%1.3f" x y
-toolMoveToGCode (ToolMove l@(LineSeg _ (P (x,y))) (Extrude e)) =
-        printf "G1 X%1.3f Y%1.3f E%1.3f" x y (eLength eVol)
-        where eVol = e * magnitude (lsDispl l) * extrusionArea
+toolMoveToGCode :: GCodeSettings -> ToolMove -> State Bool [GCommand]
+toolMoveToGCode settings (ToolMove ls@(LineSeg _ (P (x,y))) Dry) =
+        do retracted <- get
+           let move = printf "G1 X%1.3f Y%1.3f" x y 
+           if    gcRetractLength settings /= 0 
+              && not retracted
+              && magnitude (lsDispl ls) > gcRetractMinDist settings
+              then do put True
+                      return [ printf "G1 E-%f F%f" (gcRetractLength settings) (gcRetractRate settings)
+                             , move ]
+              else return [ move ]
 
-sliceToGCode :: (Double, ToolPath) -> [GCommand]
-sliceToGCode (z,tp) =
-        [ comment $ printf "Slice Z=%1.2f" z
-        , printf "G1 Z%1.2f" z
-        ] ++ map toolMoveToGCode tp
+toolMoveToGCode settings (ToolMove ls@(LineSeg _ (P (x,y))) (Extrude e)) =
+        do retracted <- get
+           let eVol = e * magnitude (lsDispl ls) * extrusionArea
+               move = printf "G1 X%1.3f Y%1.3f E%1.3f" x y (eLength eVol)
+           if retracted
+              then do put False
+                      return [ printf "G1 E%f F%f" (gcRetractLength settings) (gcRetractRate settings)
+                             , move ]
+              else return [ move ]
 
-slicesToGCode :: [(Double, ToolPath)] -> [GCommand]
-slicesToGCode slices = prelude
-                    ++ sliceToGCode (head slices)
-		    ++ layer1Postlude
-		    ++ (concat $ map sliceToGCode $ tail slices)
-		    ++ postlude
+sliceToGCode :: GCodeSettings -> Int -> (Double, ToolPath) -> [GCommand]
+sliceToGCode settings layerN (z,tp) =
+        (gcLayerPrelude settings) layerN z 
+     ++ [ comment $ printf "Slice Z=%1.2f" z
+        , printf "G1 Z%1.2f" z ]
+     ++ concat (evalState (mapM (toolMoveToGCode settings) tp) False)
+     ++ (gcLayerPostlude settings) layerN z
+
+slicesToGCode :: GCodeSettings -> [(Double, ToolPath)] -> [GCommand]
+slicesToGCode settings slices =
+        gcPrelude settings
+     ++ (concat $ zipWith (sliceToGCode settings) [1..] slices)
+     ++ gcPostlude settings
 
