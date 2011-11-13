@@ -9,7 +9,6 @@ module GGen.Geometry.Polygon ( lineSegPaths
                              , runTests
                              ) where
 
-import Debug.Trace
 import System.IO.Unsafe (unsafePerformIO)
 import GGen.Render
 import qualified GGen.Pretty as P
@@ -88,7 +87,6 @@ planeSlice plane faces =
                            where (P (_,_,z),_,_) = faceVertices face
             lines :: [LineSeg Vec3]
             lines = mapIntersection (planeFaceIntersect plane) $ filter (not.inPlane) faces 
-
             paths = map projLineSegPath $ lineSegPaths $ mergeLineSegList lines
             (polys, unmatchedPaths) = lineSegsToPolygons $ map projLineSeg lines
 
@@ -130,26 +128,29 @@ orientPolygon2 poly fill
 linePolygon2Crossings :: Line Vec2 -> Polygon Vec2 -> [Point2]
 linePolygon2Crossings l@(Line {lDir=dir}) poly =
         let f :: [LineSeg Vec2] -> [Point2]
-            f ls@(a:b:_) = 
+            f ls@(a:b:c:_) = 
                 let an = ls2Normal a LeftHanded <.> dir
                     bn = ls2Normal b LeftHanded <.> dir
+                    cn = ls2Normal c LeftHanded <.> dir
                 in case (lineLineSeg2Intersect l a, lineLineSeg2Intersect l b) of
                      (IIntersect ia, IIntersect ib)  | ia `coincident` ib && an * bn >= 0  ->
                              -- The line is crossing through a vertex
                              ia : f (tail ls)
-                     (IIntersect ia, IIntersect ib)  | ia `coincident` ib && an * bn < 0 ->
+                     (IIntersect ia, IIntersect ib)  | ia `coincident` ib && an * bn < 0  ->
                              -- The line is grazing a vertex
                              f (tail ls)
-                     (_, IIntersect ib)  | not (ib `coincident` lsA b) && not (ib `coincident` lsB b) ->
+                     (IIntersect ia, IDegenerate)  | an * cn > 0  ->
+                             -- The line is degenerate to an edge yet still crosses
+                             alerp (lsA b) (lsB b) 0.5 : f (tail ls)
+                     (_, IIntersect ib)  | not (ib `coincident` lsA b) && not (ib `coincident` lsB b)  ->
                              -- The line is crossing through an edge
                              ib : f (tail ls)
-                     otherwise                                      ->
+                     otherwise  ->
                              -- The line isn't crossing
                              f (tail ls)
-            f (_:[]) = []
+            f (_:_:[]) = []
             segs = polygonToLineSegPath poly
-        in nubPoints $ f (segs ++ [head segs])
-
+        in nubPoints $ f (segs ++ take 2 segs)
 
 -- QuickCheck properties
 
