@@ -62,7 +62,7 @@ lineSegPathToPolygon path
 -- Returns tuple with resulting polygons and line segment paths which could not
 -- be closed
 lineSegsToPolygons :: (InnerSpace p, RealFloat (Scalar p), Eq p) => [LineSeg p] -> ([Polygon p], [LineSegPath p])
-lineSegsToPolygons = partitionEithers . map f . lineSegPaths . mergeLineSegList
+lineSegsToPolygons = partitionEithers . map f . lineSegPaths
         where f path = maybe (Right path) Left $ lineSegPathToPolygon path
 
 -- | Get line segments of polygon boundary
@@ -86,8 +86,8 @@ planeSlice plane faces =
             inPlane face = (abs (z - planeZ) < 1e-5) && (faceNormal face `parallel` (0,0,1))
                            where (P (_,_,z),_,_) = faceVertices face
             lines :: [LineSeg Vec3]
-            lines = mapIntersection (planeFaceIntersect plane) $ filter (not.inPlane) faces 
-            paths = map projLineSegPath $ lineSegPaths $ mergeLineSegList lines
+            lines = mergeLineSegList $ mapIntersection (planeFaceIntersect plane) $ filter (not.inPlane) faces 
+            paths = map projLineSegPath $ lineSegPaths lines
             (polys, unmatchedPaths) = lineSegsToPolygons $ map projLineSeg lines
 
             -- To figure out filled-ness, we project a segment from outside of the bounding box to each
