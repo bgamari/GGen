@@ -47,9 +47,12 @@ mergeLineSegIntoList ls l =
                          else head tries
 
 -- | Merge a list of line segments
+-- Note that each fold may produce a list that can be further reduced, hence
+-- the recursion.
 mergeLineSegList :: (InnerSpace p, Eq p, RealFloat (Scalar p)) => [LineSeg p] -> [LineSeg p]
-mergeLineSegList ls = foldl' mergeLineSegIntoList [] ls
-
+mergeLineSegList ls = let ls' = foldl' mergeLineSegIntoList [] ls
+                      in if length ls' < length ls then mergeLineSegList ls'
+                                                   else ls'
 
 -- QuickCheck properties
 
