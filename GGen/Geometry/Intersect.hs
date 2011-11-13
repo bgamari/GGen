@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell, PatternGuards #-}
+{-# LANGUAGE TemplateHaskell, FlexibleContexts, PatternGuards #-}
 
 module GGen.Geometry.Intersect ( rayLineSeg2Intersect
                                , lineLineSeg2Intersect
@@ -25,6 +25,15 @@ import Test.QuickCheck.Property
 import Test.QuickCheck.Modifiers (NonZero(..))
 import Data.VectorSpace.QuickCheck
 import Data.Cross
+
+-- | Test whether a point falls on a line
+pointOnLine :: (InnerSpace v, RealFloat (Scalar v)) => Point v -> Line v -> Bool
+pointOnLine p (Line {lPoint=p'}) | p `coincident` p'  = True
+pointOnLine (P p) (Line {lPoint=P a, lDir=m}) | magnitude p == 0  =
+        a `parallel` m
+pointOnLine (P r) (Line {lPoint=P a, lDir=m}) =
+        let t = (magnitudeSq r - r <.> a) / (r <.> m)
+        in P r `coincident` (P a .+^ t *^ m)
 
 -- | Point of intersection between a ray and a line segment in two dimensions
 rayLineSeg2Intersect :: Ray Vec2 -> LineSeg Vec2 -> Intersection Point2
@@ -67,8 +76,8 @@ lineLine2Intersect u@(Line {lPoint=ua, lDir=m}) v
 -- | Parameters (tu, tv) of intersection between two lines in two dimensions
 lineLine2Intersect' :: Line Vec2 -> Line Vec2 -> Intersection (Double,Double)
 lineLine2Intersect' u v
-        | ua == va && m `parallel` n    = IDegenerate
-        | otherwise                     = IIntersect (tu, tv)
+        | m `parallel` n && ua `pointOnLine` v  = IDegenerate
+        | otherwise                             = IIntersect (tu, tv)
         where Line {lPoint=ua, lDir=m} = u
               Line {lPoint=va, lDir=n} = v
               mm = magnitudeSq m
@@ -95,7 +104,7 @@ faceLineIntersect (Face {faceVertices=(P v0,P v1,P v2)}) (Line {lPoint=P p, lDir
            when (vv <~ 0 || uu+vv >~ 1) INull
            let t = (v <.> qq) / det
            return $ P $ p + t *^ d
-        
+
 -- | Check whether a point sits on a plane
 pointOnPlane :: Plane Vec3 -> Point3 -> Bool
 pointOnPlane (Plane {planePoint=v, planeNormal=n}) p =
