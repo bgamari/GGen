@@ -33,7 +33,10 @@ sliceFudge = 1e-4
 
 sliceZStep = 0.4
 
-infillGen = HexInfill { infillRatio=0.2 }
+infillOffset = 0
+infillSpacing = 1.05
+
+infillPattern = hexInfill infillOffset infillSpacing
 
 layerPostlude 1 _ = [ "F600" ]
 layerPostlude _ _ = []
@@ -87,7 +90,8 @@ main = do filename:_ <- getArgs
           let nSlices = (zMax-zMin) / sliceZStep
               sliceZs = map (\i->zMin + i*sliceZStep + sliceFudge) [0..nSlices]
               slices = map getSlice sliceZs
-              toolpaths = zip sliceZs $ evalState (mapM (toolPath infillGen) slices) (initialState infillGen)
+              toolpaths = zip sliceZs
+	                $ evalState (mapM (toolPath infillPattern) slices) (igInitialState infillPattern)
 
           putStrLn "Rendering Slices..."
           mapM_ (doToolPath root region) toolpaths

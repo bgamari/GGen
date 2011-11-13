@@ -3,8 +3,8 @@
 module GGen.ToolPath ( outlinePath
                      , infillPathM
                      , toolPath
-                     , HexInfill(..)
-                     , initialState
+                     , hexInfill
+                     , InfillPattern(..)
                      ) where
 
 import Data.VectorSpace
@@ -18,6 +18,8 @@ import GGen.Geometry.Polygon (polygonToLineSegPath, linePolygon2Crossings)
 import GGen.Geometry.Intersect (lineLine2Intersect)
 import GGen.Geometry.BoundingBox (polygons2BoundingBox)
 import GGen.Types
+
+import Debug.Trace
 
 -- | Patch together a list of toolpaths into a single toolpath minimizing
 -- unnecessary motion
@@ -81,40 +83,41 @@ clipLine polys line =
             f _ _ = []
         in f sorted True
 
-class InfillGenerator t where
-        type IState t :: *
-        initialState :: t -> IState t
-        pattern :: t -> Box Vec2 -> State (IState t) [Line Vec2]
+-- | Generates an infill pattern
+type PatternGen s = Box Vec2 -> State s [Line Vec2]
+data InfillPattern s = InfillPattern { igInitialState :: s
+                                     , igPattern :: PatternGen s
+                                     } deriving (Show, Eq)
 
-data HexInfill = HexInfill { infillRatio :: Double } deriving (Show)
+hexInfill :: Double -> Double -> InfillPattern ([Angle], [Double])
+hexInfill = polyInfill (map (*(pi/180)) [0, 60, 120])
 
-instance InfillGenerator HexInfill where
-        type IState HexInfill = [Angle]
-        initialState _ = cycle [0, 60, 120]
-        pattern a = polygonInfillPattern (infillRatio a)
+polyInfill :: [Angle] -> Double -> Double -> InfillPattern ([Angle], [Double])
+polyInfill angles offset infillSpacing =
+        InfillPattern { igInitialState=(cycle angles, cycle [0,offset..infillSpacing])
+                      , igPattern=pattern }
+        where pattern (a,b) =
+                      do (phi:angles', offset:offsets') <- get
+                         put (angles', offsets')
+                         let ts = map (offset+) [0,infillSpacing..magnitude (b.-.a)]
+                             lBegin = alerp a (a .+^ (-sin phi, cos phi))
+                         return $ tr $ map (\t -> Line (lBegin t) (cos phi, sin phi)) ts
 
-polygonInfillPattern :: InfillRatio -> Box Vec2 -> State [Angle] [Line Vec2]
-polygonInfillPattern infillRatio (a,b) =
-     do infillAngle:rest <- get
-        put rest
-        let ts = map (/20) [-40..40]
-            phi = infillAngle / 180 * pi
-            lBegin = alerp a (a .+^ magnitude (b.-.a) *^ (-sin phi, cos phi))
-        return $ map (\t -> Line (lBegin t) (cos phi, sin phi)) ts
+tr x = traceShow x x
 
 -- | Build the toolpath describing the infill of a slice
-infillPathM :: InfillGenerator a => a -> [OrientedPolygon Vec2] -> State (IState a) ToolPath
-infillPathM infillGen opolys = 
+infillPathM :: InfillPattern s -> [OrientedPolygon Vec2] -> State s ToolPath
+infillPathM pattern opolys = 
         do let polys = map fst opolys
                bb = polygons2BoundingBox polys
-           pat <- pattern infillGen bb
+           pat <- (igPattern pattern) bb
            let clipped = concat $ map (clipLine polys) pat
            return $ concatToolPaths $ map (\l->extrudeLineSegPath [l]) clipped
 
 -- | Build the toolpaths of a stack of slices
-toolPath :: InfillGenerator a => a -> Slice -> State (IState a) ToolPath
-toolPath infillGen (_,opolys) = 
-        do infill <- infillPathM infillGen opolys
+toolPath :: InfillPattern s -> Slice -> State s ToolPath
+toolPath pattern (_,opolys) = 
+        do infill <- infillPathM pattern opolys
            return $ concatToolPaths [outlinePath opolys, infill]
 
 -- QuickCheck properties
