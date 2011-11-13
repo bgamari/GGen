@@ -19,8 +19,6 @@ import GGen.Geometry.Intersect (lineLine2Intersect)
 import GGen.Geometry.BoundingBox (polygons2BoundingBox)
 import GGen.Types
 
-import Debug.Trace
-
 -- | Patch together a list of toolpaths into a single toolpath minimizing
 -- unnecessary motion
 concatToolPaths :: [ToolPath] -> ToolPath
@@ -79,7 +77,7 @@ clipLine polys line =
             f :: [Point2] -> Bool -> [LineSeg Vec2]
             f points@(a:b:_) fill = if fill then (LineSeg a b) : (f (tail points) False)
                                             else f (tail points) True
-            f (a:[]) True = error $ "Unterminated line segment "++show sorted++" while clipping "++show line++" against polygon "++show polys
+            f (a:[]) True = error $ "Unterminated line segment from possible points "++show sorted++" while clipping "++show line++" against polygons "++show polys
             f _ _ = []
         in f sorted True
 
@@ -99,11 +97,10 @@ polyInfill angles offset infillSpacing =
         where pattern (a,b) =
                       do (phi:angles', offset:offsets') <- get
                          put (angles', offsets')
-                         let ts = map (offset+) [0,infillSpacing..magnitude (b.-.a)]
+                         let l = magnitude (b .-. a)
+                             ts = map (offset+) [-l,-l+infillSpacing..l]
                              lBegin = alerp a (a .+^ (-sin phi, cos phi))
-                         return $ tr $ map (\t -> Line (lBegin t) (cos phi, sin phi)) ts
-
-tr x = traceShow x x
+                         return $ map (\t -> Line (lBegin t) (cos phi, sin phi)) ts
 
 -- | Build the toolpath describing the infill of a slice
 infillPathM :: InfillPattern s -> [OrientedPolygon Vec2] -> State s ToolPath
