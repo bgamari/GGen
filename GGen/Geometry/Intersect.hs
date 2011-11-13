@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell, PatternGuards #-}
 
 module GGen.Geometry.Intersect ( rayLineSeg2Intersect
                                , lineLineSeg2Intersect
