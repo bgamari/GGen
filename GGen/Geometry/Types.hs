@@ -192,18 +192,26 @@ nubPointsWithTol tol = nubBy (\x y->magnitude (x,y) < tol)
 sameDir :: (RealFloat (Scalar v), InnerSpace v) => v -> v -> Bool
 sameDir a b = 0 <= dot && dot < realToFrac dirTol
         where dot = 1 - normalized a <.> normalized b
+{-# SPECIALIZE sameDir :: Vec2 -> Vec2 -> Bool #-}
+{-# SPECIALIZE sameDir :: Vec3 -> Vec3 -> Bool #-}
 
 -- | Are two vectors parallel (or antiparallel) to within dirTol?
 parallel :: (RealFloat (Scalar v), InnerSpace v) => v -> v -> Bool
 parallel a b = 1 - abs (normalized a <.> normalized b) < realToFrac dirTol
+{-# SPECIALIZE parallel :: Vec2 -> Vec2 -> Bool #-}
+{-# SPECIALIZE parallel :: Vec3 -> Vec3 -> Bool #-}
 
 -- | Are two vectors perpendicular to within dirTol?
 perpendicular :: (RealFloat (Scalar v), InnerSpace v) => v -> v -> Bool
 perpendicular a b = abs (normalized a <.> normalized b) < realToFrac dirTol
+{-# SPECIALIZE perpendicular :: Vec2 -> Vec2 -> Bool #-}
+{-# SPECIALIZE perpendicular :: Vec3 -> Vec3 -> Bool #-}
 
 -- | Are two points equal to within pointTol?
 coincident :: (RealFloat (Scalar v), InnerSpace v) => Point v -> Point v -> Bool
 coincident a b = magnitude (a .-. b) < realToFrac pointTol
+{-# SPECIALIZE coincident :: Point Vec2 -> Point Vec2 -> Bool #-}
+{-# SPECIALIZE coincident :: Point Vec3 -> Point Vec3 -> Bool #-}
 
 -- | Cuboid defined by two opposite corners
 type Box v = (Point v, Point v)
