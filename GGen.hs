@@ -65,14 +65,9 @@ slice settings faces =
                P (_,_,zMax) = bbMax
                region@(rMin,rMax) = (bbMin .-^ 0.2*^bbSize, bbMax .+^ 0.2*^bbSize)
 
-           let getSlice z = let plane = Plane { planeNormal=(0,0,1)
-                                              , planePoint=bbMin .+^ (0,0,1) ^* z }
-                                opolys = planeSlice plane faces
-                            in (z, opolys)
-
            let nSlices = (zMax-zMin) / zStep
                sliceZs = map (\i->zMin + i*zStep + sliceFudge) [0..nSlices]
-               slices = map getSlice sliceZs
+               slices = map (\z -> (z, planeSlice z faces)) sliceZs
                toolpaths = zip sliceZs
                          $ evalState (mapM (toolPath infill) slices) (igInitialState infill)
 

@@ -75,9 +75,10 @@ polygonToLineSegPath (Polygon points)
 
 -- | Try to find the boundaries sitting in a plane
 -- Assumes slice is in XY plane
-planeSlice :: Plane Vec3 -> [Face] -> [OrientedPolygon Vec2]
-planeSlice plane faces =
-        let proj (P (x,y,_)) = P (x,y)  -- | Project point onto XY plane
+planeSlice :: Double -> [Face] -> [OrientedPolygon Vec2]
+planeSlice z faces =
+        let plane = Plane { planeNormal=(0,0,1), planePoint=bbMin .+^ (0,0,1) ^* z }
+            proj (P (x,y,_)) = P (x,y)  -- | Project point onto XY plane
             projPolygon = map proj
             projLineSeg (LineSeg a b) = LineSeg (proj a) (proj b)  -- | Project line segment to XY plane
             projLineSegPath = map projLineSeg
