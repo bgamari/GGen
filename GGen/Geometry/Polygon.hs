@@ -4,8 +4,8 @@ module GGen.Geometry.Polygon ( lineSegPaths
                              , lineSegPathToPolygon
                              , lineSegsToPolygons
                              , polygonToLineSegPath
-                             , planeSlice
                              , linePolygon2Crossings
+                             , fixPolygon2Chirality
                              , runTests
                              ) where
 
@@ -23,8 +23,6 @@ import Data.AffineSpace
 
 import GGen.Geometry.Types hiding (runTests)
 import GGen.Geometry.Intersect (lineSegLineSeg2Intersect, planeFaceIntersect, lineLineSeg2Intersect)
-import GGen.Geometry.BoundingBox (facesBoundingBox)
-import GGen.Geometry.LineSeg (mergeLineSegList)
 
 import Test.QuickCheck.All
 import Test.QuickCheck.Property
@@ -73,39 +71,7 @@ polygonToLineSegPath (Polygon points)
         where f (a:[]) = [LineSeg a (head points)]
               f points@(a:b:_) = (LineSeg a b) : (f $ tail points)
 
--- | Try to find the boundaries sitting in a plane
--- Assumes slice is in XY plane
-planeSlice :: Double -> [Face] -> [OrientedPolygon Vec2]
-planeSlice z faces =
-        let plane = Plane { planeNormal=(0,0,1), planePoint=bbMin .+^ (0,0,1) ^* z }
-            proj (P (x,y,_)) = P (x,y)  -- | Project point onto XY plane
-            projPolygon = map proj
-            projLineSeg (LineSeg a b) = LineSeg (proj a) (proj b)  -- | Project line segment to XY plane
-            projLineSegPath = map projLineSeg
-            P (_,_,planeZ) = planePoint plane
-
-            inPlane face = (abs (z - planeZ) < 1e-5) && (faceNormal face `parallel` (0,0,1))
-                           where (P (_,_,z),_,_) = faceVertices face
-            lines :: [LineSeg Vec3]
-            lines = mergeLineSegList $ mapIntersection (planeFaceIntersect plane) $ filter (not.inPlane) faces 
-            paths = map projLineSegPath $ lineSegPaths lines
-            (polys, unmatchedPaths) = lineSegsToPolygons $ map projLineSeg lines
-
-            -- To figure out filled-ness, we project a segment from outside of the bounding box to each
-            -- of the line segment paths, counting intersections as we go
-            (bbMin, bbMax) = facesBoundingBox faces
-            origin = proj $ bbMax .+^ (bbMax.-.bbMin) ^* 0.1
-
-            -- | Figure out whether polygon should be filled
-            fillPoly :: Polygon Vec2 -> Bool
-            fillPoly poly = let path = polygonToLineSegPath poly
-                                LineSeg a b = head path
-                                ll = LineSeg origin $ alerp a b 0.5
-                                inters = mapIntersection (lineSegLineSeg2Intersect ll)
-                                       $ concat (deleteFirstsBy approx paths [path])
-                            in length inters `mod` 2 == 1
-        in map (\poly->orientPolygon2 poly (fillPoly poly)) polys
-
+-- | Order the points of a polygon in clockwise order
 fixPolygon2Chirality :: Polygon Vec2 -> Polygon Vec2
 fixPolygon2Chirality poly@(Polygon points)
         | length points < 3 = error $ "Polygons must have at least three points: "++show poly
@@ -115,12 +81,6 @@ fixPolygon2Chirality poly@(Polygon points)
               (ux,uy) = a .-. b
               (vx,vy) = c .-. b
               cross = ux*vy - uy*vx
-
-orientPolygon2 :: Polygon Vec2 -> Bool -> OrientedPolygon Vec2
-orientPolygon2 poly fill
-        | fill          = (poly', RightHanded)
-        | otherwise     = (poly', LeftHanded)
-        where poly' = fixPolygon2Chirality poly
 
 -- | Find points of intersection between a line and polygon where the line
 -- actually crosses the polygon's boundary. This eliminates cases where

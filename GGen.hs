@@ -20,6 +20,7 @@ import System.Environment (getArgs)
 import "mtl" Control.Monad.State (evalState)
 
 import Data.STL
+import GGen.Slice
 import GGen.Geometry
 import GGen.Geometry.Polygon
 import qualified GGen.Pretty as P
