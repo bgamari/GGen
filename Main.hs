@@ -68,6 +68,12 @@ gcodeSettings = GCodeSettings
 	, gcRetractRate = 200 -- millimeter/min
 	}
 
+-- | When we slice exactly in the plane of a face, nasty things can happen with
+-- numerical error. While we try to handle these properly, sliceFudge is one
+-- final line of defence. We shift all of the slices by this amount to ensure
+-- that we avoid these problems, even with nice even sliceZSteps.
+sliceFudge = 1e-6
+
 main = do filename:_ <- getArgs
           let root = maybe (error "Filename should end in .stl") id
                    $ stripSuffix ".stl" filename
