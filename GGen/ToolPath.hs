@@ -87,6 +87,15 @@ data InfillPattern s = InfillPattern { igInitialState :: s
                                      , igPattern :: PatternGen s
                                      } deriving (Show, Eq)
 
+-- | Generate a set of lines filling the given box with the specified angle and
+-- spacing
+angledLinePattern :: Double -> Angle -> Double -> Box Vec2 -> [Line Vec2]
+angledLinePattern spacing angle offset (a,b) =
+        let l = magnitude (b .-. a)
+            ts = map (offset+) [-l,-l+spacing..l]
+            lBegin = alerp a (a .+^ (-sin angle, cos angle))
+        in map (\t -> Line (lBegin t) (cos angle, sin angle)) ts
+
 hexInfill :: Double -> Double -> InfillPattern ([Angle], [Double])
 hexInfill = polyInfill (map (*(pi/180)) [0, 60, 120])
 
@@ -94,13 +103,10 @@ polyInfill :: [Angle] -> Double -> Double -> InfillPattern ([Angle], [Double])
 polyInfill angles offset infillSpacing =
         InfillPattern { igInitialState=(cycle angles, cycle [0,offset..infillSpacing])
                       , igPattern=pattern }
-        where pattern (a,b) =
-                      do (phi:angles', offset:offsets') <- get
+        where pattern box =
+                      do (angle:angles', offset:offsets') <- get
                          put (angles', offsets')
-                         let l = magnitude (b .-. a)
-                             ts = map (offset+) [-l,-l+infillSpacing..l]
-                             lBegin = alerp a (a .+^ (-sin phi, cos phi))
-                         return $ map (\t -> Line (lBegin t) (cos phi, sin phi)) ts
+                         return $ angledLinePattern infillSpacing angle offset box
 
 -- | Build the toolpath describing the infill of a slice
 infillPathM :: InfillPattern s -> [OrientedPolygon Vec2] -> State s ToolPath
