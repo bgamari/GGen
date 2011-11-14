@@ -3,7 +3,7 @@ module GGen.Slice ( planeSlice
 
 import Data.VectorSpace
 import Data.AffineSpace
-import Data.List (deleteFirstsBy)
+import Data.List (deleteFirstsBy, partition)
 
 import GGen.Types
 import GGen.Geometry.Types
@@ -20,8 +20,8 @@ orientPolygon poly fill
 
 -- | Try to find the boundaries sitting in a plane
 -- Assumes slice is in XY plane
-planeSlice :: Double -> [Face] -> [OrientedPolygon Vec2]
-planeSlice z faces =
+planeSlice :: Double -> Double -> [Face] -> [OrientedPolygon Vec2]
+planeSlice z height faces =
         let plane = Plane { planeNormal=(0,0,1), planePoint=bbMin .+^ (0,0,1) ^* z }
             proj (P (x,y,_)) = P (x,y)  -- | Project point onto XY plane
             projPolygon = map proj
@@ -29,10 +29,13 @@ planeSlice z faces =
             projLineSegPath = map projLineSeg
             P (_,_,planeZ) = planePoint plane
 
-            inPlane face = (abs (z - planeZ) < 1e-5) && (faceNormal face `parallel` (0,0,1))
+            inPlane face = (abs (z - planeZ) < height) && (faceNormal face `parallel` (0,0,1))
                            where (P (_,_,z),_,_) = faceVertices face
+            (inPlaneFaces, outPlaneFaces) = partition inPlane faces
             lines :: [LineSeg Vec3]
-            lines = mergeLineSegList $ mapIntersection (planeFaceIntersect plane) $ filter (not.inPlane) faces 
+            lines = mergeLineSegList
+                  $ mapIntersection (planeFaceIntersect plane)
+                  $ outPlaneFaces
             paths = map projLineSegPath $ lineSegPaths lines
             (polys, unmatchedPaths) = lineSegsToPolygons $ map projLineSeg lines
 
