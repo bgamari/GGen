@@ -68,7 +68,7 @@ slice settings faces =
 
            let nSlices = (zMax-zMin) / zStep
                sliceZs = map (\i->zMin + i*zStep + sliceFudge) [0..nSlices]
-               slices = map (\z -> (z, planeSlice z zStep faces)) sliceZs
+               slices = map (planeSlice faces zStep) sliceZs
                toolpaths = zip sliceZs
                          $ evalState (mapM (toolPath infill) slices) (igInitialState infill)
 

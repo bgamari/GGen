@@ -20,8 +20,8 @@ orientPolygon poly fill
 
 -- | Try to find the boundaries sitting in a plane
 -- Assumes slice is in XY plane
-planeSlice :: Double -> Double -> [Face] -> [OrientedPolygon Vec2]
-planeSlice z height faces =
+planeSlice :: [Face] -> Double -> Double -> Slice
+planeSlice faces height z =
         let plane = Plane { planeNormal=(0,0,1), planePoint=bbMin .+^ (0,0,1) ^* z }
             proj (P (x,y,_)) = P (x,y)  -- | Project point onto XY plane
             projPolygon = map proj
@@ -52,5 +52,5 @@ planeSlice z height faces =
                                 inters = mapIntersection (lineSegLineSeg2Intersect ll)
                                        $ concat (deleteFirstsBy approx paths [path])
                             in length inters `mod` 2 == 1
-        in map (\poly->orientPolygon poly (fillPoly poly)) polys
+        in (z, map (\poly->orientPolygon poly (fillPoly poly)) polys)
 
