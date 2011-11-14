@@ -1,15 +1,17 @@
 {-# LANGUAGE PackageImports, TypeFamilies #-}
 
 module GGen.ToolPath ( outlinePath
-                     , infillPathM
                      , toolPath
-                     , hexInfill
+                     , infillPathM
+                     -- * Infill patterns
                      , InfillPattern(..)
+                     , linearInfill
+                     , hexInfill
                      ) where
 
 import Data.VectorSpace
 import Data.AffineSpace
-import Data.List (foldl', sortBy, deleteBy)
+import Data.List (foldl', sortBy, deleteBy, partition)
 import Data.Function (on)
 import "mtl" Control.Monad.State
 
@@ -127,10 +129,14 @@ infillPathM pattern opolys =
            return $ concatToolPaths $ map (\l->extrudeLineSegPath [l]) clipped
 
 -- | Build the toolpaths of a stack of slices
-toolPath :: InfillPattern s -> Slice -> State s ToolPath
-toolPath pattern (_,opolys) = 
-        do infill <- infillPathM pattern opolys
-           return $ concatToolPaths [outlinePath opolys, infill]
+toolPath :: InfillPattern s -> InfillPattern t -> Slice -> State (s,t) ToolPath
+toolPath intPattern extPattern (_,opolys) = 
+        do (intState, extState) <- get
+           let (intPolys, extPolys) = partition (\(p,exposure) -> exposure==Internal) opolys
+               (intInfill, intState') = runState (infillPathM intPattern (map fst intPolys)) intState
+               (extInfill, extState') = runState (infillPathM extPattern (map fst extPolys)) extState
+           put (intState', extState')
+           return $ concatToolPaths [outlinePath (map fst opolys), intInfill, extInfill]
 
 -- QuickCheck properties
 

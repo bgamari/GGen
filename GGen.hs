@@ -51,7 +51,12 @@ ggenMain settings =
                     $ stripSuffix ".stl" filename
            stl <- Data.STL.parse filename
            slices <- slice settings (stlFacets stl)
-           --mapM_ (renderSlice root region . renderToolpath) slices
+
+           let (bbMin, bbMax) = facesBoundingBox (stlFacets stl)
+               bbSize = bbMax .-. bbMin
+               region = (bbMin .-^ 0.2*^bbSize, bbMax .+^ 0.2*^bbSize)
+           mapM_ (renderSlice root region) slices
+
            let gcode = slicesToGCode (ggGCodeSettings settings) slices
            writeFile (root++".gcode") (unlines gcode)
            return ()
@@ -60,6 +65,7 @@ slice :: GGenSettings s -> [Face] -> IO [(Double, ToolPath)]
 slice settings faces =
         do let zStep = ggSliceZStep settings
                infill = ggInfillPattern settings
+               extInfill = linearInfill 0.4 0
            let (bbMin, bbMax) = facesBoundingBox faces
                bbSize = bbMax .-. bbMin
                P (_,_,zMin) = bbMin
@@ -70,7 +76,7 @@ slice settings faces =
                sliceZs = map (\i->zMin + i*zStep + sliceFudge) [0..nSlices]
                slices = map (planeSlice faces zStep) sliceZs
                toolpaths = zip sliceZs
-                         $ evalState (mapM (toolPath infill) slices) (igInitialState infill)
+                         $ evalState (mapM (toolPath infill extInfill) slices) (igInitialState infill, igInitialState extInfill)
 
            return toolpaths
 

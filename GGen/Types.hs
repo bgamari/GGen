@@ -4,6 +4,7 @@ module GGen.Types ( Extrude(..)
                   , tpBegin
                   , tpEnd
                   , tpInvert
+                  , Exposure(..)
                   , Slice
                   , InfillRatio
                   , Angle
@@ -37,8 +38,11 @@ tpEnd tp = p where ToolMove (LineSeg _ p) _ = last tp
 -- | Reverse a toolpath
 tpInvert = reverse . map (\(ToolMove l e)->ToolMove (lsInvert l) e)
 
+-- | Is a polygon facing the outside world or internal to the object?
+data Exposure = External | Internal deriving (Show, Eq)
+
 -- | A slice is defined by a Z coordinate and a set of oriented polygons
-type Slice = (Double, [OrientedPolygon Vec2])
+type Slice = (Double, [(OrientedPolygon Vec2, Exposure)])
 
 -- | An infill ratio
 type InfillRatio = Double

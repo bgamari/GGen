@@ -52,5 +52,20 @@ planeSlice faces height z =
                                 inters = mapIntersection (lineSegLineSeg2Intersect ll)
                                        $ concat (deleteFirstsBy approx paths [path])
                             in length inters `mod` 2 == 1
-        in (z, map (\poly->orientPolygon poly (fillPoly poly)) polys)
+
+            -- | Figure out whether a polygon is exposed. We see whether any of
+            -- the polygon vertices are coincident with a vertex of an exposed
+            -- face
+            exposedVerts = map proj 
+                         $ concat
+                         $ map (\(Face _ (a,b,c)) -> [a,b,c])
+                         $ inPlaneFaces
+            polyExposed :: Polygon Vec2 -> Exposure
+            polyExposed (Polygon vs) =
+                    let checkVert v = or $ map (`coincident` v) exposedVerts
+                    in case or $ map checkVert vs of
+                            True  -> External
+                            False -> Internal
+
+        in (z, map (\poly -> (orientPolygon poly (fillPoly poly), polyExposed poly)) polys)
 
