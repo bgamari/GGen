@@ -46,7 +46,7 @@ Build-type:          Simple
 Cabal-version:       >=1.2
 
 
-Executable GGen
-  Main-is:              Main.hs
-  Build-depends:        base, random, cairo, vector-space, QuickCheck, binary, attoparsec, data-binary-ieee754, pretty, bytestring, mtl, transformers
+Library
+  Build-depends:     base, random, cairo, vector-space, QuickCheck, binary, attoparsec, data-binary-ieee754, pretty, bytestring, mtl, transformers
+  Exposed-Modules:   GGen, Data.STL
   
