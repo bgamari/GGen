@@ -96,9 +96,18 @@ angledLinePattern spacing angle offset (a,b) =
             lBegin = alerp a (a .+^ (-sin angle, cos angle))
         in map (\t -> Line (lBegin t) (cos angle, sin angle)) ts
 
+-- | Simple infill of lines at a constant angle with constant spacing
+linearInfill :: Double -> Angle -> InfillPattern ()
+linearInfill spacing angle =
+        InfillPattern { igInitialState=()
+                      , igPattern=(\box -> return $ angledLinePattern spacing angle 0 box)
+                      }
+
+-- | Hexagonal infill
 hexInfill :: Double -> Double -> InfillPattern ([Angle], [Double])
 hexInfill = polyInfill (map (*(pi/180)) [0, 60, 120])
 
+-- | General polygonal infill
 polyInfill :: [Angle] -> Double -> Double -> InfillPattern ([Angle], [Double])
 polyInfill angles offset infillSpacing =
         InfillPattern { igInitialState=(cycle angles, cycle [0,offset..infillSpacing])
