@@ -231,6 +231,8 @@ lsInvert (LineSeg a b) = LineSeg b a
 -- | Displacement of a line segment
 lsDispl :: VectorSpace v => LineSeg v -> v
 lsDispl (LineSeg a b) = b .-. a
+{-# SPECIALIZE lsDispl :: LineSeg Vec2 -> Vec2 #-}
+{-# SPECIALIZE lsDispl :: LineSeg Vec3 -> Vec3 #-}
 
 instance (Arbitrary v, Ord v, VectorSpace v) => Arbitrary (LineSeg v) where
         arbitrary = (liftM2 LineSeg) arbitrary arbitrary
