@@ -1,0 +1,107 @@
+# Internals
+
+GGen attempts to solve the problem of G code generation in a few distinct
+stages. After reading the input model, we identify the bounding box and produce
+a list of z coordinates which will define our slice planes. We slice the model
+along these planes, each producing a list of two-dimensional polygons. These
+polygons are identified by a list of points (listed in clockwise order), along
+with an "orientation," identifying whether or not the polygon should be filled
+with material. These slices are then passed to the G code generation engine,
+which constructs a toolpath for the outline and infill of each slice.
+
+As in any Haskell program, execution begins with evaluation of the `main`
+action, located in `Main.hs`. The program begins by parsing the input file
+indicated on the command line. The STL parser can be found in `Data/STL`. The
+STL parser produces a list of `Faces` (defined, along with all other geometric
+primatives in `GGen/Geometry/Types.hs`; the wise reader would peruse this file
+before continuing).
+
+## Geometry analysis
+
+The main slicing code can be found in `planeSlice` defined in
+`GGen/Geometry/Polygon.hs`. This code makes heavy use of various intersection
+routines defined in `GGen/Geometry/Intersect.hs`. The code begins by finding a
+set of line segments of intersection (with `planeFaceIntersect`) between the
+slice plane and each of the faces of the model. These segments are then joined
+together into continuous paths, which are in turn turned into polygons (by
+`lineSegsToPolygons`).
+
+Finally, the orientation of each of these polygons is then decided by an
+intersection test. Here, a line segment is contructed from a point on the
+polygon to a corner of the bounding box. The number of times this line
+intersects with other polygons is then counted. The filledness of the polygon
+is then inferred from the parity of this count (all of this is done by
+`fillPoly` in `placeSlice`).
+
+A type frequently seen throughout the codebase is `Intersection a`. This
+represents the result of an intersection test which might return either a
+primitive intersection of type `a` (e.g. Line in the case of a plane/plane
+intersection), no intersection at all (e.g. parallel but not coincident
+planes), or some degenerate case (e.g. two coincident planes). At the moment
+the `IDegenerate` case could be considered to be ill-defined and is used to
+represent both cases where the intersection is of a higher dimension than
+expected (e.g. coincident planes) or lower than expected (e.g. two faces
+intersecting only at a single point). Eliminating this ambiguity might be
+beneficial in the future.
+
+The plane slicing procedure is one place which could use some improvement. As
+with any computational geometry problem worked in finite precision arithmetic,
+the code can be very sensitive to numerical error. `planeSlice` attempts to do
+several tricks to reduce the incidence of these errors, but problems can still
+occur. One deficiency in the algorithm is its inability to usefully handle
+faces sitting in the slice plane. Currently the `inPlane` function (defined in
+`planeSlice`) is used to filter these faces out from the analysis since they
+will almost certainly cause numerical issues. This, however, precludes us from
+printing exterior faces in the $xy$ plane with the same 100% fill characteristic
+seen in outlines without special handling (which has not yet been implemented).
+The correct approach here is not clear.
+
+## Toolpath generation
+
+The slices and their associated polygons are now passed to the toolpath
+generator (`toolpath` in `GGen/ToolPath.hs`). A `ToolPath` is characterized by
+a list of `ToolMoves`, each describing a tool motion (in the $xy$ plane) along
+with an extrusion quantity. Toolpath generation takes place in two phases;
+first the outline of each of the polygons in the slice is drawn, followed by
+the construction of the in-fill pattern. The in-fill algorithm currently used
+draws a hexagonal pattern over the course of successive slices. As a result,
+the infill generator must retain state between slices and therefore all slices
+must be passed at once.
+
+In order to minimize wasted tool motion, the code uses a lazy approach in
+combining `ToolPaths`. The `concatToolPaths` function takes a list of
+`ToolPaths` and combines them into a single toolpath, attempting to minimize
+dry move distance. This is generally called as late as possible to mazimize the
+potential for optimization.
+
+## G code generation
+
+Since a majority of the work in constructing and sequencing toolpaths has
+already been done during toolpath generation, the G-code generator's
+(`GGen/GCode.hs`) job is quite simple, merely mapping each `ToolMove` to the
+correct G code command.
+
+## Rendering
+
+The `GGen.Render` module exposes a thin wrapper around the Cairo 2D drawing
+library.
+
+## A few words on numerical error
+
+As noted above, numerical error is a persistent problem in the problem space
+which GGen approaches. To properly deal with numerical error is no small task.
+Strictly speaking, tolerances should be derived for each operation through
+error propagation analysis. While Haskell could make this task quite
+transparent, it is not clear that the benefits provided by rigorous error
+analysis would outweigh the costs, both in performance and, more importantly,
+complexity.
+
+All floating point quantities in GGen are represented in
+double-precision. This provides a relative error on the order of $10^-14$. Even
+with propagation of errors over many operations, it is believed that error
+should not exceed $10^-10$ (for small values of many; this hasn't been worked
+out rigorously). Since no known machines can produce prints with anywhere near
+this resolution, we take this number to be our tolerance to numerical error.
+This is implemented in the `ApproxEq` typeclass. Admittedly, this approach
+might sweep too many of the numerical details under the rug, so reconsideration
+may be necessary in the future.
