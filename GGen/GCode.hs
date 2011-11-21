@@ -46,25 +46,29 @@ data GCodeSettings = GCodeSettings
         , gcRetractRate :: Double -- | Retraction feedrate
         } deriving (Show, Eq)
 
-toolMoveToGCode :: GCodeSettings -> ToolMove -> State Bool [GCommand]
+data GCodeState = GCodeState
+        { gsRetracted :: Bool
+        } deriving (Show, Eq)
+
+toolMoveToGCode :: GCodeSettings -> ToolMove -> State GCodeState [GCommand]
 toolMoveToGCode settings (ToolMove ls@(LineSeg _ (P (x,y))) Dry) =
-        do retracted <- get
+        do state <- get
            let move = printf "G1 X%1.3f Y%1.3f F%1.3" x y (gcDryFeedrate settings)
            if    gcRetractLength settings /= 0 
-              && not retracted
+              && not (gsRetracted state)
               && magnitude (lsDispl ls) > gcRetractMinDist settings
-              then do put True
+              then do put state {gsRetracted=True}
                       return [ printf "G1 E-%f F%f" (gcRetractLength settings) (gcRetractRate settings)
                              , move ]
               else return [ move ]
 
 toolMoveToGCode settings (ToolMove ls@(LineSeg _ (P (x,y))) (Extrude e)) =
-        do retracted <- get
+        do state <- get
            let extrusionArea = pi * (gcExtrusionDia settings / 2)**2
                eVol = e * magnitude (lsDispl ls) * extrusionArea
                move = printf "G1 X%1.3f Y%1.3f E%1.3f F%1.3" x y (eLength settings eVol) (gcExtrudeFeedrate settings) (gcExtrudeFeedrate settings)
-           if retracted
-              then do put False
+           if gsRetracted state
+              then do put state {gsRetracted=False}
                       return [ printf "G1 E%f F%f" (gcRetractLength settings) (gcRetractRate settings)
                              , move ]
               else return [ move ]
@@ -74,8 +78,9 @@ sliceToGCode settings layerN (z,tp) =
         (gcLayerPrelude settings) layerN z 
      ++ [ comment $ printf "Slice Z=%1.2f" z
         , printf "G1 Z%1.2f" z ]
-     ++ concat (evalState (mapM (toolMoveToGCode settings) tp) False)
+     ++ concat (evalState (mapM (toolMoveToGCode settings) tp) initialState)
      ++ (gcLayerPostlude settings) layerN z
+     where initialState = GCodeState {gsRetracted=False}
 
 slicesToGCode :: GCodeSettings -> [(Double, ToolPath)] -> [GCommand]
 slicesToGCode settings slices =
