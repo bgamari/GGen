@@ -13,42 +13,43 @@ import GGen.Types
 
 type GCommand = String
 
--- | Diameter of filament
-filamentDia = 3 -- millimeters
-
--- | Cross sectional area of filament
-filamentArea = pi * (filamentDia/2)**2
-
--- | Diameter of extrudant
-extrusionDia = 0.4 -- millimeters
-
--- | The ratio of actual feed distance to E axis distance (0 means completely
--- slipping, 1 means no slip)
-eSlipRate = 2
-
--- | Cross sectional area of extrudant
-extrusionArea = pi * (extrusionDia/2)**2
-
 -- | Amount of filament axis motion to extrude the given volume
-eLength v = v / filamentArea * eSlipRate
+eLength :: GCodeSettings -> Double -> Double
+eLength settings v = v / filamentArea * gcSlipRate settings
+        where -- | Cross sectional area of filament
+              filamentArea = pi * (gcFilamentDia settings / 2)**2
 
 comment s = "; " ++ s
 
 data GCodeSettings = GCodeSettings
-        { gcPrelude :: [GCommand]
-        , gcLayerPrelude :: Int -> Double -> [GCommand]
-        , gcLayerPostlude :: Int -> Double -> [GCommand]
-        , gcPostlude :: [GCommand]
-        , gcRetractMinDist :: Double
-        , gcRetractLength :: Double
-        , gcRetractRate :: Double
+        {
+        -- * Extrusion parameters
+          gcFilamentDia :: Double -- | Diameter of filament
+        , gcSlipRate :: Double -- | The ratio of actual feed distance to E axis
+                               -- distance (0 means completely slipping, 1
+                               -- means no slip)
+        , gcExtrusionDia :: Double -- | Diameter of extruded filament
+
+        -- * Feedrates
+        , gcDryFeedrate :: Double -- | Feedrate during dry move
+        , gcExtrudeFeedrate :: Double -- | Feedrate during extrusion
+
+        -- * G-code output
+        , gcPrelude :: [GCommand] -- | Commands at beginning of G-code output
+        , gcLayerPrelude :: Int -> Double -> [GCommand] -- | Commands at beginning of each layer
+        , gcLayerPostlude :: Int -> Double -> [GCommand] -- | Commands at end of each layer
+        , gcPostlude :: [GCommand] -- | Commands at end of G-code output
+
+        -- * Retraction options
+        , gcRetractMinDist :: Double -- | Minimum move distance to retract
+        , gcRetractLength :: Double -- | Amount to retract by
+        , gcRetractRate :: Double -- | Retraction feedrate
         } deriving (Show, Eq)
 
--- TODO: Retract filament
 toolMoveToGCode :: GCodeSettings -> ToolMove -> State Bool [GCommand]
 toolMoveToGCode settings (ToolMove ls@(LineSeg _ (P (x,y))) Dry) =
         do retracted <- get
-           let move = printf "G1 X%1.3f Y%1.3f" x y 
+           let move = printf "G1 X%1.3f Y%1.3f F%1.3" x y (gcDryFeedrate settings)
            if    gcRetractLength settings /= 0 
               && not retracted
               && magnitude (lsDispl ls) > gcRetractMinDist settings
@@ -59,8 +60,9 @@ toolMoveToGCode settings (ToolMove ls@(LineSeg _ (P (x,y))) Dry) =
 
 toolMoveToGCode settings (ToolMove ls@(LineSeg _ (P (x,y))) (Extrude e)) =
         do retracted <- get
-           let eVol = e * magnitude (lsDispl ls) * extrusionArea
-               move = printf "G1 X%1.3f Y%1.3f E%1.3f" x y (eLength eVol)
+           let extrusionArea = pi * (gcExtrusionDia settings / 2)**2
+               eVol = e * magnitude (lsDispl ls) * extrusionArea
+               move = printf "G1 X%1.3f Y%1.3f E%1.3f F%1.3" x y (eLength settings eVol) (gcExtrudeFeedrate settings) (gcExtrudeFeedrate settings)
            if retracted
               then do put False
                       return [ printf "G1 E%f F%f" (gcRetractLength settings) (gcRetractRate settings)
