@@ -293,6 +293,9 @@ instance (Arbitrary v, Ord v, Num v, InnerSpace v, Floating (Scalar v)) => Arbit
 -- The point list should not be closed (i.e. head p /= last p)
 newtype Polygon v = Polygon [Point v] deriving (Show, Eq)
 
+invertPolygon :: Polygon v -> Polygon v
+invertPolygon (Polygon points) = Polygon (reverse points)
+
 instance (InnerSpace v, RealFloat (Scalar v)) => ApproxEq (Polygon v) where
         (Polygon u) `approx` (Polygon v)  = and $ zipWith coincident u v
 
