@@ -49,7 +49,7 @@ segment a b = let a' = concat $ map (segmentEdge b) a
 -- | Segment and tag an edge against a polysolid
 segmentEdge :: [Edge] -> Edge -> [(Edge, Tag)]
 segmentEdge p l =
-        let proj p' = ((p' .-. lsA l) <.> lsDispl l) / (magnitude $ lsDispl l)
+        let proj p' = ((p' .-. lsA l) <.> lsDispl l) / (magnitude $ lsDispl l)^2
             innerPoints :: [(Point Vec2, Tag)]
             innerPoints = sortBy (compare `on` (proj . fst))
                         $ mapMaybe (intersectPoint l) p
