@@ -59,7 +59,10 @@ segmentEdge p l =
             edges = zipWith LineSeg points (tail points)
         in if null innerPoints
               then [(l, Outside)]
-              else filter (\(e,_) -> not $ lsDispl e =~ 0) $ zip edges tags
+              else filter (\(e,_) -> not $ lsDispl e =~ 0)
+                 $ filter (\(LineSeg a b,_) -> 0 <~ proj a && proj a <~ 1
+                                            && 0 <~ proj b && 1 <~ proj b)
+                 $ zip edges tags
 
 -- | Gets the location and tag of the intersection of two edges
 intersectPoint :: Edge -> Edge -> Maybe (Point Vec2, Tag)
