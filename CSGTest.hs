@@ -23,8 +23,29 @@ b = Polygon
     , P ( 0, 0)
     ]
 
+c = Polygon
+    [ P ( 0, 8)
+    , P (-8, 8)
+    , P (-8,-8)
+    , P ( 0,-8)
+    ]
+d = Polygon    
+    [ P ( 0, 5)
+    , P (-4, 5)
+    , P (-4,-1)
+    , P ( 2,-1)
+    , P ( 2,-3)
+    , P ( 0,-3)
+    , P ( 0,-5)
+    , P ( 4,-5)
+    , P ( 4, 1)
+    , P (-2, 1)
+    , P (-2, 3)
+    , P ( 0, 3)
+    ]
+    
 p2p (P v) = DP.P v
-            
+
 polygonToPath (Polygon ps) = close $ fromVertices $ map p2p ps
 
 edgeToPath (LineSeg a b) = fromVertices [p2p a, p2p b]
@@ -36,10 +57,10 @@ taggedEdgeToPath (edge, tag) = edgeToPath edge # lc color
             PosBound -> yellow
             NegBound -> orange
          
-main = do let segs = segment (polygonToLineSegPath b) (polygonToLineSegPath a)
-          --let segs = segmentEdge (polygonToLineSegPath b) (head $ polygonToLineSegPath a)
+main = do let segs = segment (polygonToLineSegPath c) (polygonToLineSegPath d)
+          --let segs = segmentEdge (polygonToLineSegPath d) (LineSeg (P (0,-8)) (P (0,8)))
           print segs
-          defaultMain $ mconcat $ map edgeToPath
-                      $ (polygonToLineSegPath a) `difference` (polygonToLineSegPath b)
-          --defaultMain $ mconcat $ map taggedEdgeToPath segs
+          --defaultMain $ mconcat $ map edgeToPath
+          --            $ (polygonToLineSegPath c) `union` (polygonToLineSegPath d)
+          defaultMain $ mconcat $ map taggedEdgeToPath segs
 
