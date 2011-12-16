@@ -91,8 +91,8 @@ x <~ y = x < y || x =~ y
 instance ApproxEq Double where
         a `approx` b = abs (a - b) < 1e-8
 
-instance ApproxEq v => ApproxEq (Point v) where
-        P a `approx` P b = a `approx` b
+instance (ApproxEq v, InnerSpace v, RealFloat (Scalar v)) => ApproxEq (Point v) where
+        a `approx` b = distance a b < realToFrac pointTol
 
 -- Three dimensional geometry
 
