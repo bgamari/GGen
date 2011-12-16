@@ -1,26 +1,58 @@
 # GGen
 
 `GGen` is a G-code generator targetted at 3D additive printers (e.g.
-[RepRap](http://www.reprap.org/)). It was developed out of frustration with the
-dominant package in this design space, [Skeinforge](http://www.skeinforge.org).
-Written in Haskell, GGen strives to be a clean, fast, and easily verifiable
-alternative to Skeinforge.
+[RepRap](http://www.reprap.org/)). While the dominant package in this design
+space, Skeinforge, does an admirable job of turning models into G-code, its
+usability and performance leave something to be desired. GGen seeks to bring the power of the cutting-edge Haskell programming language to bear on the problem slicing. In doing so, we hope to,
+
+ * Be fast: Most models are sliced in under 10 seconds. Yes, that fast.
+ * Be efficient: Generate G-code to drive the printer efficiently
+ * Be easy to use: A simple configuration format allows beginners to get their printer up quickly
+ * Be flexible: GGen provides a library interface for those who need more flexibility
+ * Be hackable: Abstraction enables clear reasoning over difficult problems
+   while type safety helps guarantee correctness
+
+## Installation
+
+First, you will need the
+[Haskell Platform](http://hackage.haskell.org/platform/) installed. If you are
+running Ubuntu, this is quite simple,
+
+        $ sudo apt-get install ghc libghc-gtk-dev libghc-cairo-dev cabal-install
+
+If not, refer to the [Haskell Platform](http://hackage.haskell.org/platform/)
+download page for your platform.
+
+Once Haskell has been installed, installation is a matter of grabbing and building the source,
+
+        $ git clone git://github.com/bgamari/GGen.git
+        $ cd GGen
+        $ cabal install
+
+This should grab any dependencies, build, and install GGen.
 
 ## Usage
 
-While GGen is still in the early stages of development, it can produce
-reasonable G code albeit with some limitations. That being said, it lacks many
-of the more advanced features of Skeinforge (e.g. raft generation, etc.).
+While GGen is still in the early stages of development, it can produce very
+reasonable G code. That being said, it lacks many of the more advanced features
+of Skeinforge (e.g. raft generation, skirts, etc.).
 
-At the moment on the STL input format is supported. To produce G-code from an
-STL model (both binary and , one must first compile the package,
+GGen can be configured in two ways. Most users will want to use the simple
+configuration option.
 
-        $ ghc -O Main.hs
+At the moment only the STL input format is supported. To produce G-code from an
+STL model (both binary and ASCII) 
 
-Now simply passing an STL model name on the command line will produce a G code
-file along with an SVG image of the toolpath for each produced slice,
+## Alternatives
 
-        $ ./Main test.stl
-
-Configuration parameters are currently hard-coded in various source files.
+ * [Skeinforge](http://www.skeinforge.org)
+   The dominant package in this design space. Quite comprehensive and
+   reasonably robust but difficult to configure and rather slow.
+ * [SFACT](http://www.reprapfordummies.net/index.php/softwaresection/44-gcode-generators/49-sfact-homepage)
+   A variant of Skeinforge
+ * [Slic3r](http://slic3r.org/)
+   A clean and fast slicer written in Perl seeking to fulfil many of the same
+   goals as GGen.
+ * [SuperSkein](https://github.com/MaskedRetriever/SuperSkein/)
+ * [RepRap Host](http://reprap.org/wiki/Reprap_host_software)
 
