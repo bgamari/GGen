@@ -61,7 +61,7 @@ segmentEdge p l =
               then [(l, Outside)]
               else filter (\(e,_) -> not $ lsDispl e =~ 0)
                  $ filter (\(LineSeg a b,_) -> 0 <~ proj a && proj a <~ 1
-                                            && 0 <~ proj b && 1 <~ proj b)
+                                            && 0 <~ proj b && proj b <~ 1)
                  $ zip edges tags
 
 -- | Gets the location and tag of the intersection of two edges
