@@ -7,6 +7,7 @@ module GGen.Geometry.PolygonCSG ( -- * Common operations
                                   -- * Internals
                                 , Tag(..)
                                 , segment
+                                , segmentEdge
                                 ) where
 
 import Data.Monoid
