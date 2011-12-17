@@ -50,11 +50,11 @@ polygonToPath (Polygon ps) = close $ fromVertices $ map p2p ps
 
 edgeToPath (LineSeg a b) = fromVertices [p2p a, p2p b]
                            
-taggedEdgeToPath (edge, tag) = edgeToPath edge # lc color
+taggedEdgeToPath (edge, tag) = edgeToPath edge # lc color # lw 0.05
     where color = case tag of
             Inside   -> blue
             Outside  -> red
-            PosBound -> yellow
+            PosBound -> green
             NegBound -> orange
          
 main = do let segs = segment (polygonToLineSegPath c) (polygonToLineSegPath d)
