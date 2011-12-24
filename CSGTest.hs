@@ -8,6 +8,7 @@ import GGen.Geometry.Polygon
 import GGen.Geometry.PolygonCSG
 import Data.Colour
 
+-- Trivial squares
 a, b :: Polygon Vec2
 a = Polygon
     [ P ( 1, 1) 
@@ -24,6 +25,8 @@ b = Polygon
     , P ( 0, 0)
     ]
 
+-- Figure 2.1 from paper
+c, d :: Polygon Vec2
 c = Polygon
     [ P ( 0, 8)
     , P (-8, 8)
