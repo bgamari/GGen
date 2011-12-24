@@ -6,6 +6,7 @@ import Diagrams.Backend.Cairo.CmdLine
 import GGen.Geometry.Types
 import GGen.Geometry.Polygon
 import GGen.Geometry.PolygonCSG
+import Data.Colour
 
 a, b :: Polygon Vec2
 a = Polygon
@@ -50,7 +51,9 @@ polygonToPath (Polygon ps) = close $ fromVertices $ map p2p ps
 
 edgeToPath (LineSeg a b) = fromVertices [p2p a, p2p b]
                            
-taggedEdgeToPath (edge, tag) = edgeToPath edge # lc color # lw 0.05
+taggedEdgeToPath (edge, tag) = edgeToPath edge
+                               # lcA (color `withOpacity` 0.5)
+                               # lw 0.05
     where color = case tag of
             Inside   -> blue
             Outside  -> red
