@@ -69,18 +69,18 @@ segmentEdge p l =
 intersectPoint :: Edge -> Edge -> Maybe (Point Vec2, Tag)
 intersectPoint l e =
   case lineLineSeg2Intersect l' e of
-    IIntersect i | i =~ lsA e ->  if lsDispl e `cross` lsDispl l > 0
+    IIntersect i | i =~ lsA e ->  if lsDispl e <.> ls2Normal l LeftHanded > 0
                                      then Just (i, PosBound)
                                      else Just (i, NegBound)
-    IIntersect i | i =~ lsB e ->  if lsDispl e `cross` lsDispl l > 0
-                                     then Just (i, NegBound)
-                                     else Just (i, PosBound)
+    IIntersect i | i =~ lsB e ->  if lsDispl e <.> ls2Normal l LeftHanded < 0
+                                     then Just (i, PosBound)
+                                     else Just (i, NegBound)
     IIntersect i   ->  Just (i, Inside)
     IDegenerate    ->  Nothing
     INull          ->  Nothing
   where l' = Line (lsA l) (lsDispl l)
-        cross (ax,ay) (bx,by) = ax*by - ay*bx
 
+-- | Filter for edges of a given tag
 filterEdges :: Tag -> [(Edge,Tag)] -> [Edge]
 filterEdges tag = map fst . filter (\(_,t) -> t == tag)
                   
