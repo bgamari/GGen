@@ -23,6 +23,7 @@ module GGen.Geometry.Types ( -- | General
                            , ls2Normal
                            -- | n dimensional geometry
                            , Point(..)
+                           , sameDir
                            , parallel
                            , perpendicular
                            , coincident
@@ -190,8 +191,7 @@ nubPointsWithTol tol = nubBy (\x y->magnitude (x,y) < tol)
 
 -- | Are two vectors strictly parallel to within dirTol?
 sameDir :: (RealFloat (Scalar v), InnerSpace v) => v -> v -> Bool
-sameDir a b = 0 <= dot && dot < realToFrac dirTol
-        where dot = 1 - normalized a <.> normalized b
+sameDir a b = a `parallel` b && a <.> b > 0
 {-# SPECIALIZE sameDir :: Vec2 -> Vec2 -> Bool #-}
 {-# SPECIALIZE sameDir :: Vec3 -> Vec3 -> Bool #-}
 
