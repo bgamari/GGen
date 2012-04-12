@@ -1,4 +1,5 @@
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module GGen.Pretty ( vec
                    , point
