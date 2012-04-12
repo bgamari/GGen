@@ -18,7 +18,7 @@ data Extrude = Extrude Double
              deriving (Show, Eq)
 
 -- | Specifies a tool motion within a slice
-data ToolMove = ToolMove (LineSeg Vec2) Extrude
+data ToolMove = ToolMove (LineSeg R2) Extrude
               deriving (Show)
 
 instance ApproxEq ToolMove where
@@ -42,7 +42,7 @@ tpInvert = reverse . map (\(ToolMove l e)->ToolMove (lsInvert l) e)
 data Exposure = External | Internal deriving (Show, Eq)
 
 -- | A slice is defined by a Z coordinate and a set of oriented polygons
-type Slice = (Double, [(OrientedPolygon Vec2, Exposure)])
+type Slice = (Double, [(OrientedPolygon R2, Exposure)])
 
 -- | An infill ratio
 type InfillRatio = Double

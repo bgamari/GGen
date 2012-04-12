@@ -27,7 +27,7 @@ class Vector v where
 instance Vector Vec3 where
         vec (x,y,z) = parens $ hcat $ punctuate (text ", ") $ map approxDouble [x,y,z]
 
-instance Vector Vec2 where
+instance Vector R2 where
         vec (x,y) = parens $ hcat $ punctuate (text ", ") $ map approxDouble [x,y]
 
 point (P v) = vec v

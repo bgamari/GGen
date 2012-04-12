@@ -49,17 +49,17 @@ lineToPt (P (x,y)) = lineTo x y
 moveToPt (P (x,y)) = moveTo x y
 
 -- | Draws a line segment path
-drawSegment2 :: LineSeg Vec2 -> Render ()
+drawSegment2 :: LineSeg R2 -> Render ()
 drawSegment2 (LineSeg u v) = lineToPt u >> lineToPt v
 
 
-renderPath2 :: LineSegPath Vec2 -> Render ()
+renderPath2 :: LineSegPath R2 -> Render ()
 renderPath2 path = 
         do newPath
            mapM_ drawSegment2 path
            stroke
 
-renderArrow :: LineSeg Vec2 -> Render ()
+renderArrow :: LineSeg R2 -> Render ()
 renderArrow l@(LineSeg a b) =
         do drawSegment2 l
            stroke
@@ -82,7 +82,7 @@ renderRegionToSVG filename (w,h) region action =
                                                           showPage)
 
 -- | Render polygons
-renderPolygons2 :: [Polygon Vec2] -> Render ()
+renderPolygons2 :: [Polygon R2] -> Render ()
 renderPolygons2 polys =
         do newPath
            setFillRule FillRuleEvenOdd
@@ -96,7 +96,7 @@ renderPolygons2 polys =
            stroke
 
 -- | Draw a 2D polygon
-drawPolygon2 :: Polygon Vec2 -> Render ()
+drawPolygon2 :: Polygon R2 -> Render ()
 drawPolygon2 (Polygon points) = do moveToPt $ head points
                                    mapM_ lineToPt points
                                    lineToPt $ head points
@@ -109,7 +109,7 @@ drawPolygon (Polygon points) = do moveTo x y
                                where P (x,y,_) = head points
 
 -- | Render 2D oriented polygons
-renderOrientedPolygons :: [OrientedPolygon Vec2] -> Render ()
+renderOrientedPolygons :: [OrientedPolygon R2] -> Render ()
 renderOrientedPolygons polys =
         do setFillRule FillRuleEvenOdd
            newPath

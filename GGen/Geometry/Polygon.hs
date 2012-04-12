@@ -72,7 +72,7 @@ polygonToLineSegPath (Polygon points)
               f points@(a:b:_) = (LineSeg a b) : (f $ tail points)
 
 -- | Order the points of a polygon in clockwise order
-fixPolygon2Chirality :: Polygon Vec2 -> Polygon Vec2
+fixPolygon2Chirality :: Polygon R2 -> Polygon R2
 fixPolygon2Chirality poly@(Polygon points)
         | length points < 3 = error $ "Polygons must have at least three points: "++show poly
         | cross > 1 = poly
@@ -86,9 +86,9 @@ fixPolygon2Chirality poly@(Polygon points)
 -- actually crosses the polygon's boundary. This eliminates cases where
 -- the line skims a corner by testing that the dot product of consecutive
 -- edges' normals and the line are of the same sign
-linePolygon2Crossings :: Line Vec2 -> Polygon Vec2 -> [Point2]
+linePolygon2Crossings :: Line R2 -> Polygon R2 -> [Point2]
 linePolygon2Crossings l@(Line {lDir=dir}) poly =
-        let f :: [LineSeg Vec2] -> [Point2]
+        let f :: [LineSeg R2] -> [Point2]
             f ls@(a:b:c:_) = 
                 let an = ls2Normal a LeftHanded <.> dir
                     bn = ls2Normal b LeftHanded <.> dir
@@ -116,7 +116,7 @@ linePolygon2Crossings l@(Line {lDir=dir}) poly =
 -- QuickCheck properties
 
 -- Properties for polygon-line segment conversion
-prop_polygon_line_seg_roundtrip :: Polygon Vec2 -> Result
+prop_polygon_line_seg_roundtrip :: Polygon R2 -> Result
 prop_polygon_line_seg_roundtrip poly@(Polygon points)
         | length points < 3 = rejected
         | otherwise = let ls = polygonToLineSegPath poly

@@ -17,8 +17,8 @@ module GGen.Geometry.Types ( -- | General
                            , translateFace
                            , faceFromVertices
                            -- | Two dimensional geometry
-                           , Vec2
-                           , NVec2
+                           , R2
+                           , NR2
                            , Point2
                            , ls2Normal
                            -- | n dimensional geometry
@@ -138,25 +138,25 @@ instance Arbitrary Face where
 -- Two dimensional geometry
 
 -- | Spatial vector (e.g. direction)
-type Vec2 = (Double, Double)
+type R2 = (Double, Double)
 
-instance ApproxEq Vec2 where approx = sameDir
+instance ApproxEq R2 where approx = sameDir
 
-instance Arbitrary (NonNull Vec2) where
+instance Arbitrary (NonNull R2) where
         arbitrary = do NonZero a <- arbitrary
                        NonZero b <- arbitrary
                        return $ NonNull (a,b)
 
 -- | Unit normalized spatial vector
-type NVec2 = Vec2
+type NR2 = R2
 
 -- | Spatial point
-type Point2 = Point Vec2
+type Point2 = Point R2
 
 -- | Find the normal to a line segment in the given direction. ls2Normal
 -- (LineSeg a b) LeftHanded yields a normal pointing to the left as one travels
 -- from a to b
-ls2Normal :: LineSeg Vec2 -> Hand -> Vec2
+ls2Normal :: LineSeg R2 -> Hand -> R2
 ls2Normal l LeftHanded = - ls2Normal l RightHanded
 ls2Normal l RightHanded
         | magnitude (x,y) =~ 0    = error "Trying to get normal of zero-magnitude vector"
@@ -192,25 +192,25 @@ nubPointsWithTol tol = nubBy (\x y->magnitude (x,y) < tol)
 -- | Are two vectors strictly parallel to within dirTol?
 sameDir :: (RealFloat (Scalar v), InnerSpace v) => v -> v -> Bool
 sameDir a b = a `parallel` b && a <.> b > 0
-{-# SPECIALIZE sameDir :: Vec2 -> Vec2 -> Bool #-}
+{-# SPECIALIZE sameDir :: R2 -> R2 -> Bool #-}
 {-# SPECIALIZE sameDir :: Vec3 -> Vec3 -> Bool #-}
 
 -- | Are two vectors parallel (or antiparallel) to within dirTol?
 parallel :: (RealFloat (Scalar v), InnerSpace v) => v -> v -> Bool
 parallel a b = 1 - abs (normalized a <.> normalized b) < realToFrac dirTol
-{-# SPECIALIZE parallel :: Vec2 -> Vec2 -> Bool #-}
+{-# SPECIALIZE parallel :: R2 -> R2 -> Bool #-}
 {-# SPECIALIZE parallel :: Vec3 -> Vec3 -> Bool #-}
 
 -- | Are two vectors perpendicular to within dirTol?
 perpendicular :: (RealFloat (Scalar v), InnerSpace v) => v -> v -> Bool
 perpendicular a b = abs (normalized a <.> normalized b) < realToFrac dirTol
-{-# SPECIALIZE perpendicular :: Vec2 -> Vec2 -> Bool #-}
+{-# SPECIALIZE perpendicular :: R2 -> R2 -> Bool #-}
 {-# SPECIALIZE perpendicular :: Vec3 -> Vec3 -> Bool #-}
 
 -- | Are two points equal to within pointTol?
 coincident :: (RealFloat (Scalar v), InnerSpace v) => Point v -> Point v -> Bool
 coincident a b = magnitude (a .-. b) < realToFrac pointTol
-{-# SPECIALIZE coincident :: Point Vec2 -> Point Vec2 -> Bool #-}
+{-# SPECIALIZE coincident :: Point R2 -> Point R2 -> Bool #-}
 {-# SPECIALIZE coincident :: Point Vec3 -> Point Vec3 -> Bool #-}
 
 -- | Cuboid defined by two opposite corners
@@ -231,7 +231,7 @@ lsInvert (LineSeg a b) = LineSeg b a
 -- | Displacement of a line segment
 lsDispl :: VectorSpace v => LineSeg v -> v
 lsDispl (LineSeg a b) = b .-. a
-{-# SPECIALIZE lsDispl :: LineSeg Vec2 -> Vec2 #-}
+{-# SPECIALIZE lsDispl :: LineSeg R2 -> R2 #-}
 {-# SPECIALIZE lsDispl :: LineSeg Vec3 -> Vec3 #-}
 
 instance (Arbitrary v, Ord v, VectorSpace v) => Arbitrary (LineSeg v) where

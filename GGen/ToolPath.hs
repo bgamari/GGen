@@ -44,18 +44,18 @@ concatToolPaths tps
                       in f (tp++next') rTps' (tpEnd next)
 
 -- | Extrude path of line segments
-extrudeLineSegPath :: LineSegPath Vec2 -> ToolPath
+extrudeLineSegPath :: LineSegPath R2 -> ToolPath
 extrudeLineSegPath = map (\l -> ToolMove l (Extrude 1))
 
 -- | Extrude path outlining polygon
-extrudePolygon :: Polygon Vec2 -> ToolPath
+extrudePolygon :: Polygon R2 -> ToolPath
 extrudePolygon = extrudeLineSegPath . polygonToLineSegPath
 
 -- | Offset polygon boundaries inward or outwards
 -- Positive offset is outwards
-offsetPolygon :: Double -> Polygon Vec2 -> Polygon Vec2
+offsetPolygon :: Double -> Polygon R2 -> Polygon R2
 offsetPolygon offset = Polygon . f . polygonToLineSegPath
-        where f :: LineSegPath Vec2 -> [Point2]
+        where f :: LineSegPath R2 -> [Point2]
               f segs@(s:s':_) = 
                 let p = lsB s
                     l  = Line (p .+^ ls2Normal s RightHanded)  (offset *^ normalized (lsDispl s))
@@ -64,11 +64,11 @@ offsetPolygon offset = Polygon . f . polygonToLineSegPath
                 in p':f (tail segs)
 
 -- | Build the toolpath describing the outline of a slice 
-outlinePath :: [OrientedPolygon Vec2] -> ToolPath
+outlinePath :: [OrientedPolygon R2] -> ToolPath
 outlinePath polys = concat $ map (extrudePolygon.fst) polys
 
 -- | Clip a line with a set of polygons
-clipLine :: [Polygon Vec2] -> Line Vec2 -> [LineSeg Vec2]
+clipLine :: [Polygon R2] -> Line R2 -> [LineSeg R2]
 clipLine polys line = 
         let inters = concat $ map (linePolygon2Crossings line) polys
             cmpInter (P (ax,ay)) (P (bx,by)) = case compare ax bx of 
@@ -76,7 +76,7 @@ clipLine polys line =
                                                     c  -> c
             sorted = sortBy cmpInter inters
 
-            f :: [Point2] -> Bool -> [LineSeg Vec2]
+            f :: [Point2] -> Bool -> [LineSeg R2]
             f points@(a:b:_) fill = if fill then (LineSeg a b) : (f (tail points) False)
                                             else f (tail points) True
             f (a:[]) True = error $ "Unterminated line segment from possible points "++show sorted++" while clipping "++show line++" against polygons "++show polys
@@ -84,14 +84,14 @@ clipLine polys line =
         in f sorted True
 
 -- | Generates an infill pattern
-type PatternGen s = Box Vec2 -> State s [Line Vec2]
+type PatternGen s = Box R2 -> State s [Line R2]
 data InfillPattern s = InfillPattern { igInitialState :: s
                                      , igPattern :: PatternGen s
                                      } deriving (Show, Eq)
 
 -- | Generate a set of lines filling the given box with the specified angle and
 -- spacing
-angledLinePattern :: Double -> Angle -> Double -> Box Vec2 -> [Line Vec2]
+angledLinePattern :: Double -> Angle -> Double -> Box R2 -> [Line R2]
 angledLinePattern spacing angle offset (a,b) =
         let l = magnitude (b .-. a)
             ts = map (offset+) [-l,-l+spacing..l]
@@ -120,7 +120,7 @@ polyInfill angles offset infillSpacing =
                          return $ angledLinePattern infillSpacing angle offset box
 
 -- | Build the toolpath describing the infill of a slice
-infillPathM :: InfillPattern s -> [OrientedPolygon Vec2] -> State s ToolPath
+infillPathM :: InfillPattern s -> [OrientedPolygon R2] -> State s ToolPath
 infillPathM pattern opolys = 
         do let polys = map fst opolys
                bb = polygons2BoundingBox polys

@@ -12,7 +12,7 @@ import GGen.Geometry.Intersect (planeFaceIntersect, lineSegLineSeg2Intersect)
 import GGen.Geometry.LineSeg (mergeLineSegList)
 import GGen.Geometry.BoundingBox (facesBoundingBox)
 
-orientPolygon :: Polygon Vec2 -> Bool -> OrientedPolygon Vec2
+orientPolygon :: Polygon R2 -> Bool -> OrientedPolygon R2
 orientPolygon poly fill
         | fill          = (poly', RightHanded)
         | otherwise     = (poly', LeftHanded)
@@ -45,7 +45,7 @@ planeSlice faces height z =
             origin = proj $ bbMax .+^ (bbMax.-.bbMin) ^* 0.1
 
             -- | Figure out whether polygon should be filled
-            fillPoly :: Polygon Vec2 -> Bool
+            fillPoly :: Polygon R2 -> Bool
             fillPoly poly = let path = polygonToLineSegPath poly
                                 LineSeg a b = head path
                                 ll = LineSeg origin $ alerp a b 0.5
@@ -60,7 +60,7 @@ planeSlice faces height z =
                          $ concat
                          $ map (\(Face _ (a,b,c)) -> [a,b,c])
                          $ inPlaneFaces
-            polyExposed :: Polygon Vec2 -> Exposure
+            polyExposed :: Polygon R2 -> Exposure
             polyExposed (Polygon vs) =
                     let checkVert v = or $ map (`coincident` v) exposedVerts
                     in case or $ map checkVert vs of

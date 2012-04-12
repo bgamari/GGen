@@ -28,7 +28,7 @@ data Tag = Outside
          | NegBound
          deriving (Show, Eq)
 
-type Edge = LineSeg Vec2
+type Edge = LineSeg R2
 
 -- | Klein four group binary operator
 (*+*) :: Tag -> Tag -> Tag
@@ -67,7 +67,7 @@ segmentEdge p l
   | lsDispl l <.> (1,0) == 0 && lsDispl l <.> (0,1) < 0  = segmentEdge p (lsInvert l)
   | otherwise = 
         let proj p' = ((p' .-. lsA l) <.> lsDispl l) / (magnitude $ lsDispl l)^2
-            innerPoints :: [(Point Vec2, Tag)]
+            innerPoints :: [(Point R2, Tag)]
             innerPoints = sortBy (compare `on` (proj . fst))
                         $ mapMaybe (intersectPoint l) p
             tags = scanl (*+*) Outside $ map snd innerPoints
@@ -83,7 +83,7 @@ segmentEdge p l
                  $ zip edges tags
 
 -- | Gets the location and tag of the intersection of two edges
-intersectPoint :: Edge -> Edge -> Maybe (Point Vec2, Tag)
+intersectPoint :: Edge -> Edge -> Maybe (Point R2, Tag)
 intersectPoint l e =
   case lineLineSeg2Intersect l' e of
     IIntersect i | i =~ lsA e ->  if lsDispl e <.> ls2Normal l LeftHanded > 0

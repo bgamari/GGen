@@ -14,7 +14,7 @@ import Text.PrettyPrint (($$))
 import qualified Text.PrettyPrint as PP
 
 -- Trivial squares
-a, b :: Polygon Vec2
+a, b :: Polygon R2
 a = Polygon
     [ P ( 1, 1) 
     , P ( 1,-1)
@@ -31,7 +31,7 @@ b = Polygon
     ]
 
 -- Figure 2.1 from paper
-c, d :: Polygon Vec2
+c, d :: Polygon R2
 c = Polygon
     [ P ( 0, 8)
     , P (-8, 8)
@@ -53,12 +53,12 @@ d = Polygon
     , P ( 0, 3)
     ]
     
-p2p :: Point Vec2 -> DP.Point R2
+p2p :: Point R2 -> DP.Point R2
 p2p (P v) = DP.P v
 
 polygonToPath (Polygon ps) = close $ fromVertices $ map p2p ps
 
-edgeToPath :: (PathLike p, V p ~ R2) => LineSeg Vec2 -> p
+edgeToPath :: (PathLike p, V p ~ R2) => LineSeg R2 -> p
 edgeToPath (LineSeg a b) = fromVertices [p2p a, p2p b]
 
 taggedEdgeToPath :: (HasStyle p, PathLike p, V p ~ R2) => (Edge,Tag) -> p

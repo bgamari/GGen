@@ -7,7 +7,7 @@ module GGen.Geometry.BoundingBox ( points2BoundingBox
 import Data.VectorSpace
 import GGen.Geometry.Types
 
-points2BoundingBox :: [Point2] -> Box Vec2
+points2BoundingBox :: [Point2] -> Box R2
 points2BoundingBox [] = (P (0,0), P (0,0))
 points2BoundingBox points =
         let (xs,ys) = unzip $ map (\(P v)->v) points
@@ -26,6 +26,6 @@ facesBoundingBox faces =
                                in [a,b,c]
         in points3BoundingBox $ concat $ map getAllVerts faces
 
-polygons2BoundingBox :: [Polygon Vec2] -> Box Vec2
+polygons2BoundingBox :: [Polygon R2] -> Box R2
 polygons2BoundingBox polys = points2BoundingBox $ concat $ map (\(Polygon points) -> points) polys
 

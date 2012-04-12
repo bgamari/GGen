@@ -36,7 +36,7 @@ pointOnLine (P r) (Line {lPoint=P a, lDir=m}) =
         in P r `coincident` (P a .+^ t *^ m)
 
 -- | Point of intersection between a ray and a line segment in two dimensions
-rayLineSeg2Intersect :: Ray Vec2 -> LineSeg Vec2 -> Intersection Point2
+rayLineSeg2Intersect :: Ray R2 -> LineSeg R2 -> Intersection Point2
 rayLineSeg2Intersect u v@(LineSeg va vb)
         | IIntersect (ut, vt) <- i      = if ut >~ 0 && vt >~ 0 && vt <= 1
                                             then IIntersect $ va .+^ lsDispl v ^* vt
@@ -46,7 +46,7 @@ rayLineSeg2Intersect u v@(LineSeg va vb)
         where i = lineLine2Intersect' (Line {lPoint=rBegin u, lDir=rDir u}) (Line {lPoint=va, lDir=lsDispl v})
 
 -- | Point of intersection between a line and a line segment in two dimensions
-lineLineSeg2Intersect :: Line Vec2 -> LineSeg Vec2 -> Intersection Point2
+lineLineSeg2Intersect :: Line R2 -> LineSeg R2 -> Intersection Point2
 lineLineSeg2Intersect l v@(LineSeg va vb)
         | IIntersect (ut, vt) <- i      = if vt >~ 0 && vt <~ 1
                                             then IIntersect $ va .+^ lsDispl v ^* vt
@@ -56,7 +56,7 @@ lineLineSeg2Intersect l v@(LineSeg va vb)
         where i = lineLine2Intersect' l (Line {lPoint=va, lDir=lsDispl v})
 
 -- | Point of intersection between two line segments in two dimensions
-lineSegLineSeg2Intersect :: LineSeg Vec2 -> LineSeg Vec2 -> Intersection Point2
+lineSegLineSeg2Intersect :: LineSeg R2 -> LineSeg R2 -> Intersection Point2
 lineSegLineSeg2Intersect u@(LineSeg ua ub) v@(LineSeg va vb)
         | IIntersect (ut, vt) <- i      = if ut >~ 0 && ut <~ 1 && vt >~ 0 && vt <~ 1
                                             then IIntersect $ ua .+^ lsDispl u ^* ut
@@ -70,7 +70,7 @@ lineSegLineSeg2Intersect u@(LineSeg ua ub) v@(LineSeg va vb)
         where i = lineLine2Intersect' (Line {lPoint=ua, lDir=lsDispl u}) (Line {lPoint=va, lDir=lsDispl v})
 
 -- | Point of intersection between two lines in two dimensions
-lineLine2Intersect :: Line Vec2 -> Line Vec2 -> Intersection Point2
+lineLine2Intersect :: Line R2 -> Line R2 -> Intersection Point2
 lineLine2Intersect u@(Line {lPoint=ua, lDir=m}) v 
         | IIntersect (tu, tv) <- i      = IIntersect $ ua .+^ tu *^ m 
         | IDegenerate <- i              = IDegenerate
@@ -78,7 +78,7 @@ lineLine2Intersect u@(Line {lPoint=ua, lDir=m}) v
         where i = lineLine2Intersect' u v
 
 -- | Parameters (tu, tv) of intersection between two lines in two dimensions
-lineLine2Intersect' :: Line Vec2 -> Line Vec2 -> Intersection (Double,Double)
+lineLine2Intersect' :: Line R2 -> Line R2 -> Intersection (Double,Double)
 lineLine2Intersect' u v
         | m `parallel` n && ua `pointOnLine` v  = IDegenerate
         | otherwise                             = IIntersect (tu, tv)
@@ -170,7 +170,7 @@ planeFaceIntersect plane face@(Face {faceVertices=(a,b,c)})
 
 -- Properties for rayLineSeg2Intersect
 -- | Check that ray-line segment intersections are found
-prop_ray_line_seg2_intersection_hit :: NonNull (LineSeg Vec2) -> Point2 -> Normalized Double -> Result
+prop_ray_line_seg2_intersection_hit :: NonNull (LineSeg R2) -> Point2 -> Normalized Double -> Result
 prop_ray_line_seg2_intersection_hit (NonNull l@(LineSeg a b)) rayBegin (Normalized t)
         | rayDir `parallel` (lsDispl l)   = rejected
         | otherwise = case rayLineSeg2Intersect (Ray {rBegin=rayBegin, rDir=rayDir}) l of
@@ -183,7 +183,7 @@ prop_ray_line_seg2_intersection_hit (NonNull l@(LineSeg a b)) rayBegin (Normaliz
 
 -- Properties for lineSegLineSeg2Intersect
 -- | Check that line segment-line segment intersections are found
-prop_line_seg_line_seg2_intersection_hit :: NonNull (LineSeg Vec2) -> Point2 -> Normalized Double -> Result
+prop_line_seg_line_seg2_intersection_hit :: NonNull (LineSeg R2) -> Point2 -> Normalized Double -> Result
 prop_line_seg_line_seg2_intersection_hit (NonNull l@(LineSeg a b)) v (Normalized t)
         | parallel (lsDispl l) (lsDispl l')   = rejected
         | otherwise = case lineSegLineSeg2Intersect l l' of
@@ -196,7 +196,7 @@ prop_line_seg_line_seg2_intersection_hit (NonNull l@(LineSeg a b)) v (Normalized
 
 -- Properties for lineLine2Intersect
 -- | Check that intersect falls on both lines
-prop_line_line2_intersection_on_both :: Line Vec2 -> Line Vec2 -> Result
+prop_line_line2_intersection_on_both :: Line R2 -> Line R2 -> Result
 prop_line_line2_intersection_on_both u@(Line {lPoint=up, lDir=ud}) v@(Line {lPoint=vp, lDir=vd})
         | vd `parallel` ud     = rejected
         | otherwise = case lineLine2Intersect u v of
