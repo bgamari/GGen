@@ -61,7 +61,11 @@ lineSegLineSeg2Intersect u@(LineSeg ua ub) v@(LineSeg va vb)
         | IIntersect (ut, vt) <- i      = if ut >~ 0 && ut <~ 1 && vt >~ 0 && vt <~ 1
                                             then IIntersect $ ua .+^ lsDispl u ^* ut
                                             else INull
-        | IDegenerate <- i              = IDegenerate
+        | IDegenerate <- i              = let la = lsDispl u <.> (ua .-. va)
+                                              lb = lsDispl u <.> (ua .-. vb)
+                                          in case () of
+                                                _ | la*lb < 0  -> IDegenerate
+                                                _ | otherwise  -> INull
         | INull <- i                    = INull
         where i = lineLine2Intersect' (Line {lPoint=ua, lDir=lsDispl u}) (Line {lPoint=va, lDir=lsDispl v})
 
