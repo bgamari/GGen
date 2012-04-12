@@ -13,7 +13,7 @@ import Data.VectorSpace
 import Data.AffineSpace
 import Data.List (foldl', sortBy, deleteBy, partition)
 import Data.Function (on)
-import "mtl" Control.Monad.State
+import Control.Monad.Trans.State
 
 import GGen.Geometry.Types
 import GGen.Geometry.Polygon (polygonToLineSegPath, linePolygon2Crossings)

@@ -17,7 +17,7 @@ import Data.List (isSuffixOf, deleteFirstsBy)
 import Text.Printf
 import System.IO
 import System.Environment (getArgs)
-import "mtl" Control.Monad.State (evalState)
+import Control.Monad.Trans.State (evalState)
 
 import Data.STL
 import GGen.Slice

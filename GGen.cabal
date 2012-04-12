@@ -47,7 +47,7 @@ Cabal-version:       >=1.2
 
 
 Library
-  Build-depends:     base, random, cairo, vector-space, QuickCheck, binary, attoparsec, data-binary-ieee754, pretty, bytestring, mtl, transformers, diagrams-core, diagrams-lib, newtype, NumInstances, vector-space-points
+  Build-depends:     base, random, cairo, vector-space, QuickCheck, binary, attoparsec, data-binary-ieee754, pretty, bytestring, transformers, diagrams-core, diagrams-lib, newtype, NumInstances, vector-space-points
   Exposed-Modules:   GGen, Data.STL
   
 Executable GGen
