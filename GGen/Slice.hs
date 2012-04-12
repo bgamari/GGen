@@ -32,7 +32,7 @@ planeSlice faces height z =
             inPlane face = (abs (z - planeZ) < height) && (faceNormal face `parallel` (0,0,1))
                            where (P (_,_,z),_,_) = faceVertices face
             (inPlaneFaces, outPlaneFaces) = partition inPlane faces
-            lines :: [LineSeg Vec3]
+            lines :: [LineSeg R3]
             lines = mergeLineSegList
                   $ mapIntersection (planeFaceIntersect plane)
                   $ outPlaneFaces

@@ -87,7 +87,7 @@ stripSuffix a b
         | a `isSuffixOf` b  = stripSuffix (init a) (init b)
         | otherwise         = Nothing
 
-renderSlice :: String -> Box Vec3 -> (Double, ToolPath) -> IO ()
+renderSlice :: String -> Box R3 -> (Double, ToolPath) -> IO ()
 renderSlice rootName region@(rMin,rMax) (z,tp) =
         do printf "Slice Z=%1.2f\n" z
            renderRegionToSVG filename (500,500) region $

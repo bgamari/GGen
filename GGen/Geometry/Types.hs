@@ -10,8 +10,8 @@ module GGen.Geometry.Types ( -- | General
                            , nubPointsWithTol
                            , (=~), (>~), (<~), (/=)
                              -- | Three dimensional geometry
-                           , Vec3
-                           , NVec3
+                           , R3
+                           , NR3
                            , P3
                            , Face(..)
                            , translateFace
@@ -98,11 +98,11 @@ instance (ApproxEq v, InnerSpace v, RealFloat (Scalar v)) => ApproxEq (Point v) 
 -- Three dimensional geometry
 
 -- | Spatial vector (e.g. direction)
-type Vec3 = (Double, Double, Double)
+type R3 = (Double, Double, Double)
 
-instance ApproxEq Vec3 where approx = sameDir
+instance ApproxEq R3 where approx = sameDir
 
-instance Arbitrary (NonNull Vec3) where
+instance Arbitrary (NonNull R3) where
         arbitrary = do NonZero a <- arbitrary
                        NonZero b <- arbitrary
                        NonZero c <- arbitrary
@@ -110,17 +110,17 @@ instance Arbitrary (NonNull Vec3) where
 
 -- | Unit normalized spatial vector
 -- TODO: Enforce with type system?
-type NVec3 = Vec3
+type NR3 = R3
 
 -- | Spatial point (i.e. location in space)
-type P3 = Point Vec3
+type P3 = Point R3
 
 -- | Face defined by unit normal and three vertices
-data Face = Face { faceNormal :: NVec3
+data Face = Face { faceNormal :: NR3
                  , faceVertices :: (P3,P3,P3)
                  } deriving (Show)
                  
-translateFace :: Face -> Vec3 -> Face
+translateFace :: Face -> R3 -> Face
 translateFace face@(Face {faceVertices=(a,b,c)}) v =
         face { faceVertices=(a.+^v, b.+^v, c.+^v) }
 
@@ -193,25 +193,25 @@ nubPointsWithTol tol = nubBy (\x y->magnitude (x,y) < tol)
 sameDir :: (RealFloat (Scalar v), InnerSpace v) => v -> v -> Bool
 sameDir a b = a `parallel` b && a <.> b > 0
 {-# SPECIALIZE sameDir :: R2 -> R2 -> Bool #-}
-{-# SPECIALIZE sameDir :: Vec3 -> Vec3 -> Bool #-}
+{-# SPECIALIZE sameDir :: R3 -> R3 -> Bool #-}
 
 -- | Are two vectors parallel (or antiparallel) to within dirTol?
 parallel :: (RealFloat (Scalar v), InnerSpace v) => v -> v -> Bool
 parallel a b = 1 - abs (normalized a <.> normalized b) < realToFrac dirTol
 {-# SPECIALIZE parallel :: R2 -> R2 -> Bool #-}
-{-# SPECIALIZE parallel :: Vec3 -> Vec3 -> Bool #-}
+{-# SPECIALIZE parallel :: R3 -> R3 -> Bool #-}
 
 -- | Are two vectors perpendicular to within dirTol?
 perpendicular :: (RealFloat (Scalar v), InnerSpace v) => v -> v -> Bool
 perpendicular a b = abs (normalized a <.> normalized b) < realToFrac dirTol
 {-# SPECIALIZE perpendicular :: R2 -> R2 -> Bool #-}
-{-# SPECIALIZE perpendicular :: Vec3 -> Vec3 -> Bool #-}
+{-# SPECIALIZE perpendicular :: R3 -> R3 -> Bool #-}
 
 -- | Are two points equal to within pointTol?
 coincident :: (RealFloat (Scalar v), InnerSpace v) => Point v -> Point v -> Bool
 coincident a b = magnitude (a .-. b) < realToFrac pointTol
 {-# SPECIALIZE coincident :: Point R2 -> Point R2 -> Bool #-}
-{-# SPECIALIZE coincident :: Point Vec3 -> Point Vec3 -> Bool #-}
+{-# SPECIALIZE coincident :: Point R3 -> Point R3 -> Bool #-}
 
 -- | Cuboid defined by two opposite corners
 type Box v = (Point v, Point v)
@@ -232,7 +232,7 @@ lsInvert (LineSeg a b) = LineSeg b a
 lsDispl :: VectorSpace v => LineSeg v -> v
 lsDispl (LineSeg a b) = b .-. a
 {-# SPECIALIZE lsDispl :: LineSeg R2 -> R2 #-}
-{-# SPECIALIZE lsDispl :: LineSeg Vec3 -> Vec3 #-}
+{-# SPECIALIZE lsDispl :: LineSeg R3 -> R3 #-}
 
 instance (Arbitrary v, Ord v, VectorSpace v) => Arbitrary (LineSeg v) where
         arbitrary = (liftM2 LineSeg) arbitrary arbitrary
@@ -362,14 +362,14 @@ mapIntersectionDropDegen f = mapMaybe g
 -- QuickCheck properties
 
 -- Properties for lsInvertDispl
-prop_invert_displacement :: LineSeg Vec3 -> Bool
+prop_invert_displacement :: LineSeg R3 -> Bool
 prop_invert_displacement l = (lsDispl $ lsInvert l) == (negateV $ lsDispl l)
 
 -- Properties for perpendicular
-prop_perpendicular_perp :: NonZero Vec3 -> NonZero Vec3 -> Bool
+prop_perpendicular_perp :: NonZero R3 -> NonZero R3 -> Bool
 prop_perpendicular_perp (NonZero u) (NonZero v) = perpendicular u (u `cross3` v)
 
-prop_perpendicular_par :: Vec3 -> Double -> Bool
+prop_perpendicular_par :: R3 -> Double -> Bool
 prop_perpendicular_par u a = not $ perpendicular u (u ^* a)
 
 runTests = $quickCheckAll

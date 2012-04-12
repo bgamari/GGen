@@ -24,7 +24,7 @@ approxDouble = PP.double . approximate 2
 class Vector v where
         vec :: v -> Doc
 
-instance Vector Vec3 where
+instance Vector R3 where
         vec (x,y,z) = parens $ hcat $ punctuate (text ", ") $ map approxDouble [x,y,z]
 
 instance Vector R2 where

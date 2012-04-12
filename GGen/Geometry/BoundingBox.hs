@@ -14,13 +14,13 @@ points2BoundingBox points =
         in ( P (minimum xs, minimum ys)
            , P (maximum xs, maximum ys) )
 
-points3BoundingBox :: [P3] -> Box Vec3
+points3BoundingBox :: [P3] -> Box R3
 points3BoundingBox points =
         let (xs,ys,zs) = unzip3 $ map (\(P v)->v) points
         in ( P (minimum xs, minimum ys, minimum zs)
            , P (maximum xs, maximum ys, maximum zs) )
 
-facesBoundingBox :: [Face] -> Box Vec3
+facesBoundingBox :: [Face] -> Box R3
 facesBoundingBox faces =
         let getAllVerts face = let (a,b,c) = faceVertices face
                                in [a,b,c]

@@ -23,7 +23,7 @@ import GGen.Geometry.Types
 import GGen.Types
 
 -- | Rescale and center a surface of size (w,h) for region (rmin,rmax)
-rescaleForRegion :: (Double, Double) -> Box Vec3 -> Render ()
+rescaleForRegion :: (Double, Double) -> Box R3 -> Render ()
 rescaleForRegion (w,h) (rmin,rmax) = 
         do scale w h
            translate 0.5 0.5
@@ -39,7 +39,7 @@ rescaleForRegion (w,h) (rmin,rmax) =
                                       else 1/rh
 
 -- | Draws a line segment path
-drawSegment :: LineSeg Vec3 -> Render ()
+drawSegment :: LineSeg R3 -> Render ()
 drawSegment (LineSeg (P (ux,uy,_)) (P (vx,vy,_))) =
         do lineTo ux uy
            lineTo vx vy
@@ -75,7 +75,7 @@ renderArrow l@(LineSeg a b) =
            lineToPt b
            fill 
 
-renderRegionToSVG :: FilePath -> (Double,Double) -> Box Vec3 -> Render () -> IO ()
+renderRegionToSVG :: FilePath -> (Double,Double) -> Box R3 -> Render () -> IO ()
 renderRegionToSVG filename (w,h) region action =
         withSVGSurface filename w h (flip renderWith $ do rescaleForRegion (w,h) region
                                                           action
@@ -102,7 +102,7 @@ drawPolygon2 (Polygon points) = do moveToPt $ head points
                                    lineToPt $ head points
 
 -- | Draw a polygon path
-drawPolygon :: Polygon Vec3 -> Render ()
+drawPolygon :: Polygon R3 -> Render ()
 drawPolygon (Polygon points) = do moveTo x y
                                   mapM_ (\(P (x,y,z)) -> lineTo x y) points
                                   lineTo x y

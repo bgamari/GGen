@@ -57,7 +57,7 @@ mergeLineSegList ls = let ls' = foldl' mergeLineSegIntoList [] ls
 -- QuickCheck properties
 
 -- | Split a line segment in two and ensure that the pieces are merged
-prop_merge_divided :: LineSeg Vec3 -> Normalized Double -> Bool -> Bool -> Result
+prop_merge_divided :: LineSeg R3 -> Normalized Double -> Bool -> Bool -> Result
 prop_merge_divided l (Normalized s) flipA flipB
         | magnitude (lsDispl l) == 0   = rejected
         | otherwise = case m of
@@ -73,14 +73,14 @@ prop_merge_divided l (Normalized s) flipA flipB
                             passed = diffBegin < 1e-8 && diffEnd < 1e-8
 
 -- | Make sure segments which aren't parallel aren't merged
-prop_dont_merge_nonparallel :: LineSeg Vec3 -> LineSeg Vec3 -> Result
+prop_dont_merge_nonparallel :: LineSeg R3 -> LineSeg R3 -> Result
 prop_dont_merge_nonparallel a b
         | abs (normalized (lsDispl a) <.> normalized (lsDispl b) - 1) == 0    = rejected
         | otherwise = case tryMergeLineSegs a b of
                                 Just _    -> failed {reason="Inappropriate merge"}
                                 Nothing   -> succeeded
 
-prop_merge_line_seg_into_list :: P3 -> NonNull Vec3 -> NonZero Double -> Bool
+prop_merge_line_seg_into_list :: P3 -> NonNull R3 -> NonZero Double -> Bool
 prop_merge_line_seg_into_list a (NonNull v) (NonZero s) = 
         let b = a .+^ v
             l = LineSeg a b
@@ -88,7 +88,7 @@ prop_merge_line_seg_into_list a (NonNull v) (NonZero s) =
             merged = mergeLineSegIntoList [l] l'
         in length merged == 1
 
-prop_merge_line_seg_list :: P3 -> NonNull Vec3 -> NonZero Double -> Bool
+prop_merge_line_seg_list :: P3 -> NonNull R3 -> NonZero Double -> Bool
 prop_merge_line_seg_list a (NonNull v) (NonZero s) = 
         let b = a .+^ v
             l = LineSeg a b
