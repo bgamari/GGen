@@ -1,5 +1,6 @@
 module Data.STL.ASCII (Data.STL.ASCII.parse) where
 
+import Control.Applicative       
 import Data.VectorSpace
 import Data.AffineSpace
 import Data.Cross
@@ -20,7 +21,6 @@ vector = do x <- entry
             return (x,y,z)
          where entry = C.char ' ' >> C.double
 
-z=(0,0,0)
 facet = do C.skipSpace
            sstring "facet normal"
            n <- vector
