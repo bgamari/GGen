@@ -14,7 +14,7 @@ points2BoundingBox points =
         in ( P (minimum xs, minimum ys)
            , P (maximum xs, maximum ys) )
 
-points3BoundingBox :: [Point3] -> Box Vec3
+points3BoundingBox :: [P3] -> Box Vec3
 points3BoundingBox points =
         let (xs,ys,zs) = unzip3 $ map (\(P v)->v) points
         in ( P (minimum xs, minimum ys, minimum zs)

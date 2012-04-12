@@ -80,7 +80,7 @@ prop_dont_merge_nonparallel a b
                                 Just _    -> failed {reason="Inappropriate merge"}
                                 Nothing   -> succeeded
 
-prop_merge_line_seg_into_list :: Point3 -> NonNull Vec3 -> NonZero Double -> Bool
+prop_merge_line_seg_into_list :: P3 -> NonNull Vec3 -> NonZero Double -> Bool
 prop_merge_line_seg_into_list a (NonNull v) (NonZero s) = 
         let b = a .+^ v
             l = LineSeg a b
@@ -88,7 +88,7 @@ prop_merge_line_seg_into_list a (NonNull v) (NonZero s) =
             merged = mergeLineSegIntoList [l] l'
         in length merged == 1
 
-prop_merge_line_seg_list :: Point3 -> NonNull Vec3 -> NonZero Double -> Bool
+prop_merge_line_seg_list :: P3 -> NonNull Vec3 -> NonZero Double -> Bool
 prop_merge_line_seg_list a (NonNull v) (NonZero s) = 
         let b = a .+^ v
             l = LineSeg a b

@@ -12,7 +12,7 @@ module GGen.Geometry.Types ( -- | General
                              -- | Three dimensional geometry
                            , Vec3
                            , NVec3
-                           , Point3
+                           , P3
                            , Face(..)
                            , translateFace
                            , faceFromVertices
@@ -113,18 +113,18 @@ instance Arbitrary (NonNull Vec3) where
 type NVec3 = Vec3
 
 -- | Spatial point (i.e. location in space)
-type Point3 = Point Vec3
+type P3 = Point Vec3
 
 -- | Face defined by unit normal and three vertices
 data Face = Face { faceNormal :: NVec3
-                 , faceVertices :: (Point3,Point3,Point3)
+                 , faceVertices :: (P3,P3,P3)
                  } deriving (Show)
                  
 translateFace :: Face -> Vec3 -> Face
 translateFace face@(Face {faceVertices=(a,b,c)}) v =
         face { faceVertices=(a.+^v, b.+^v, c.+^v) }
 
-faceFromVertices :: (Point3, Point3, Point3) -> Face
+faceFromVertices :: (P3, P3, P3) -> Face
 faceFromVertices vs@(a,b,c) = let u = b .-. a
                                   v = c .-. a
                               in Face (normalized $ u `cross3` v) vs

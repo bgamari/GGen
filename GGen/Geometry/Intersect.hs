@@ -93,7 +93,7 @@ lineLine2Intersect' u v
 
 -- | Point of intersection between a face and a line
 -- Using Moeller, Trumbore (1997)
-faceLineIntersect :: Face -> Line Vec3 -> Intersection Point3
+faceLineIntersect :: Face -> Line Vec3 -> Intersection P3
 faceLineIntersect (Face {faceVertices=(P v0,P v1,P v2)}) (Line {lPoint=P p, lDir=d}) =
         do let u = v1 - v0
                v = v2 - v0
@@ -110,12 +110,12 @@ faceLineIntersect (Face {faceVertices=(P v0,P v1,P v2)}) (Line {lPoint=P p, lDir
            return $ P $ p + t *^ d
 
 -- | Check whether a point sits on a plane
-pointOnPlane :: Plane Vec3 -> Point3 -> Bool
+pointOnPlane :: Plane Vec3 -> P3 -> Bool
 pointOnPlane (Plane {planePoint=v, planeNormal=n}) p =
         abs ((p.-.v) <.> n) =~ 0
 
 -- | Find point of intersection of a plane and line
-planeLineIntersect :: Plane Vec3 -> Line Vec3 -> Intersection Point3
+planeLineIntersect :: Plane Vec3 -> Line Vec3 -> Intersection P3
 planeLineIntersect plane line@(Line {lPoint=a, lDir=m})
         | planeNormal plane `perpendicular` m && pointOnPlane plane a =
                 IDegenerate
@@ -129,7 +129,7 @@ planeLineIntersect' (Plane {planeNormal=n, planePoint=v0}) (Line{lPoint=a, lDir=
         (n <.> (v0 .-. a)) / (n <.> m)
 
 -- | Point of intersection between plane and line segment
-planeLineSegIntersect :: Plane Vec3 -> LineSeg Vec3 -> Intersection Point3
+planeLineSegIntersect :: Plane Vec3 -> LineSeg Vec3 -> Intersection P3
 planeLineSegIntersect plane (LineSeg a b)
         | perpendicular n (b.-.a)
           && pointOnPlane plane a  = IDegenerate
