@@ -5,38 +5,39 @@ module GGen( GGenSettings(..)
            , ggenMain
            -- For convenience
            , hexInfill
-           , comment
+           , comment, command
            , GCodeSettings(..)
            ) where
 
-import Data.VectorSpace
-import Data.AffineSpace
-import Data.Maybe (mapMaybe, maybe)
-import Data.Either (either, partitionEithers)
-import Data.List (isSuffixOf, deleteFirstsBy)
-import Text.Printf
-import System.IO
-import System.Environment (getArgs)
-import Control.Monad.Trans.State (evalState)
+import           Control.Monad.Trans.State (evalState)
+import           Data.AffineSpace
+import           Data.Either (either, partitionEithers)
+import           Data.List (isSuffixOf, deleteFirstsBy)
+import           Data.Maybe (mapMaybe, maybe)
+import qualified Data.Text.Lazy.IO as TIO
+import           Data.VectorSpace
+import           System.Environment (getArgs)
+import           System.IO
+import           Text.Printf
 
-import Data.STL
-import GGen.Slice
-import GGen.Geometry
-import GGen.Geometry.Polygon
+import           Data.STL
+import           GGen.Slice
+import           GGen.Geometry
+import           GGen.Geometry.Polygon
 import qualified GGen.Pretty as P
-import GGen.Render
-import Text.PrettyPrint.HughesPJ (($$), (<+>))
-import GGen.Types
-import GGen.ToolPath
-import GGen.GCode
+import           GGen.Render
+import           Text.PrettyPrint.HughesPJ (($$), (<+>))
+import           GGen.Types
+import           GGen.ToolPath
+import           GGen.GCode
 
-import Graphics.Rendering.Cairo
-import Control.Monad (liftM)
+import           Graphics.Rendering.Cairo
+import           Control.Monad (liftM)
 
 data GGenSettings s = GGenSettings { ggSliceZStep :: Double
                                    , ggInfillPattern :: InfillPattern s
                                    , ggGCodeSettings :: GCodeSettings
-                                   } deriving (Show, Eq)
+                                   }
 
 -- | When we slice exactly in the plane of a face, nasty things can happen with
 -- numerical error. While we try to handle these properly, sliceFudge is one
@@ -58,7 +59,7 @@ ggenMain settings =
            mapM_ (renderSlice root region) slices
 
            let gcode = slicesToGCode (ggGCodeSettings settings) slices
-           writeFile (root++".gcode") (unlines gcode)
+           TIO.writeFile (root++".gcode") gcode
            return ()
 
 slice :: GGenSettings s -> [Face] -> IO [(Double, ToolPath)]

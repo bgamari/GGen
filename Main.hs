@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+                
 import GGen
 
 infillOffset = 0
@@ -9,11 +11,12 @@ settings = GGenSettings
         , ggGCodeSettings = gcodeSettings
         }
 
-layerPostlude 2 _ = [ "F300" ]
-layerPostlude 5 _ = [ "M104 S225"
-                    , "M140 S60"
-                    ]
-layerPostlude _ _ = []
+layerPostlude 2 _ = do command "F300"
+layerPostlude 5 _ = do command "M104 S225"
+                       command "M140 S60"
+layerPostlude _ _ = return ()
+              
+layerPrelude _ _ = return ()
 
 gcodeSettings = GCodeSettings
         { gcFilamentDia = 3
@@ -23,29 +26,29 @@ gcodeSettings = GCodeSettings
         , gcDryFeedrate = 600
         , gcExtrudeFeedrate = 300
 
-        , gcPrelude = [ comment "Begin prelude"
-                      , "M140 S100"
-                      , "M104 S235"
-                      , "F 1000"
-                      , "G1 Z5"
-                      , "G161 X0 Y0 Z0" 
-                      , "G1 Z1"
-                      , "G1 X80 Y50"
-                      , "G1 Z0.30"
-                      , "G92 X0 Y0 Z0"
-                      , "F 300"
-                      , comment "End prelude"
-                      ]
-        , gcLayerPrelude = (\_ _ -> [])
+        , gcPrelude = do
+            comment "Begin prelude"
+            command "M140 S100"
+            command "M104 S235"
+            command "F 1000"
+            command "G1 Z5"
+            command "G161 X0 Y0 Z0" 
+            command "G1 Z1"
+            command "G1 X80 Y50"
+            command "G1 Z0.30"
+            command "G92 X0 Y0 Z0"
+            command "F 300"
+            comment "End prelude"
+        , gcLayerPrelude = layerPrelude
         , gcLayerPostlude = layerPostlude
-        , gcPostlude = [ comment "Begin postlude"
-                       , "G161 X0 Y0"
-                       , "G161 Z0"
-                       , "G1 Z5"
-                       , "M104 S0"
-                       , "M140 S0"
-                       , comment "End postlude"
-                       ]
+        , gcPostlude = do 
+             comment "Begin postlude"
+             command "G161 X0 Y0"
+             command "G161 Z0"
+             command "G1 Z5"
+             command "M104 S0"
+             command "M140 S0"
+             comment "End postlude"
         , gcRetractMinDist = 2 -- millimeter
         , gcRetractLength = 1 -- millimeter
         , gcRetractRate = 1000 -- millimeter/min

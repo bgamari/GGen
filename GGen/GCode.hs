@@ -1,17 +1,26 @@
+{-# LANGUAGE OverloadedStrings #-}
+                
 module GGen.GCode ( slicesToGCode
                   , GCommand
                   , GCodeSettings(..)
                   , comment
+                  , command
                   ) where
 
-import Text.Printf
-import Data.VectorSpace
-import Control.Monad.Trans.State
+import           Control.Monad (when)
+import           Control.Monad.Trans.RWS
+import           Data.Monoid
+import qualified Data.Text.Lazy as T
+import           Data.Text.Lazy.Builder as TB
+import           Data.Text.Lazy.Builder.RealFloat
+import           Data.VectorSpace
 
-import GGen.Geometry.Types
-import GGen.Types
+import           GGen.Geometry.Types
+import           GGen.Types
 
-type GCommand = String
+type GCodeM = RWS GCodeSettings Builder GCodeState
+     
+type GCommand = Builder
 
 -- | Amount of filament axis motion to extrude the given volume
 eLength :: GCodeSettings -> Double -> Double
@@ -19,7 +28,11 @@ eLength settings v = v / filamentArea * gcSlipRate settings
         where -- | Cross sectional area of filament
               filamentArea = pi * (gcFilamentDia settings / 2)**2
 
-comment s = "; " ++ s
+command :: Builder -> GCodeM ()
+command s = tell $ s<>"\n"
+        
+comment :: Builder -> GCodeM ()
+comment s = tell $ "; "<>s<>"\n"
 
 data GCodeSettings = GCodeSettings
         {
@@ -35,58 +48,69 @@ data GCodeSettings = GCodeSettings
         , gcExtrudeFeedrate :: Double -- | Feedrate during extrusion
 
         -- * G-code output
-        , gcPrelude :: [GCommand] -- | Commands at beginning of G-code output
-        , gcLayerPrelude :: Int -> Double -> [GCommand] -- | Commands at beginning of each layer
-        , gcLayerPostlude :: Int -> Double -> [GCommand] -- | Commands at end of each layer
-        , gcPostlude :: [GCommand] -- | Commands at end of G-code output
+        , gcPrelude :: GCodeM () -- | Commands at beginning of G-code output
+        , gcLayerPrelude :: Int -> Double -> GCodeM () -- | Commands at beginning of each layer
+        , gcLayerPostlude :: Int -> Double -> GCodeM () -- | Commands at end of each layer
+        , gcPostlude :: GCodeM () -- | Commands at end of G-code output
 
         -- * Retraction options
         , gcRetractMinDist :: Double -- | Minimum move distance to retract
         , gcRetractLength :: Double -- | Amount to retract by
         , gcRetractRate :: Double -- | Retraction feedrate
-        } deriving (Show, Eq)
+        }
 
-data GCodeState = GCodeState
-        { gsRetracted :: Bool
-        } deriving (Show, Eq)
+data GCodeState = GCodeState { gsRetracted :: Bool
+                             }
+                deriving (Show, Eq)
 
-toolMoveToGCode :: GCodeSettings -> ToolMove -> State GCodeState [GCommand]
-toolMoveToGCode settings (ToolMove ls@(LineSeg _ end) Dry) =
-        do let (x,y) = unp2 end
+toolMoveToGCode :: ToolMove -> GCodeM ()
+toolMoveToGCode (ToolMove ls@(LineSeg _ end) Dry) =
+        do settings <- ask
            state <- get
-           let move = printf "G1 X%1.3f Y%1.3f F%1.3" x y (gcDryFeedrate settings)
-           if    gcRetractLength settings /= 0 
-              && not (gsRetracted state)
-              && magnitude (lsDispl ls) > gcRetractMinDist settings
-              then do put state {gsRetracted=True}
-                      return [ printf "G1 E-%f F%f" (gcRetractLength settings) (gcRetractRate settings)
-                             , move ]
-              else return [ move ]
+           when (gcRetractLength settings /= 0 
+                 && not (gsRetracted state)
+                 && magnitude (lsDispl ls) > gcRetractMinDist settings) $ do
+                   put state {gsRetracted=True}
+                   command $ "G1E-"<>realFloat (gcRetractLength settings)
+                             <>"F"<>realFloat (gcRetractRate settings)
+        
+           let (x,y) = unp2 end
+           command $ "G1X"<>realFloat x<>"Y"<>realFloat y
+                     <>"F"<>realFloat (gcDryFeedrate settings)
 
-toolMoveToGCode settings (ToolMove ls@(LineSeg _ end) (Extrude e)) =
-        do let (x,y) = unp2 end
+toolMoveToGCode (ToolMove ls@(LineSeg _ end) (Extrude e)) =
+        do settings <- ask
            state <- get
+           when (gsRetracted state) $ do
+              put state {gsRetracted=False}
+              command $ "G1 E"<>realFloat (gcRetractLength settings)
+                        <> "F"<>realFloat (gcRetractRate settings)
            let extrusionArea = pi * (gcExtrusionDia settings / 2)**2
                eVol = e * magnitude (lsDispl ls) * extrusionArea
-               move = printf "G1 X%1.3f Y%1.3f E%1.3f F%1.3" x y (eLength settings eVol) (gcExtrudeFeedrate settings) (gcExtrudeFeedrate settings)
-           if gsRetracted state
-              then do put state {gsRetracted=False}
-                      return [ printf "G1 E%f F%f" (gcRetractLength settings) (gcRetractRate settings)
-                             , move ]
-              else return [ move ]
+               (x,y) = unp2 end
+           command $ "G1X"<>realFloat x<>"Y"<>realFloat y
+                     <>"E"<>realFloat (eLength settings eVol)
+                     <>"F"<>realFloat (gcExtrudeFeedrate settings)
 
-sliceToGCode :: GCodeSettings -> Int -> (Double, ToolPath) -> [GCommand]
-sliceToGCode settings layerN (z,tp) =
-        (gcLayerPrelude settings) layerN z 
-     ++ [ comment $ printf "Slice Z=%1.2f" z
-        , printf "G1 Z%1.2f" z ]
-     ++ concat (evalState (mapM (toolMoveToGCode settings) tp) initialState)
-     ++ (gcLayerPostlude settings) layerN z
-     where initialState = GCodeState {gsRetracted=False}
+sliceToGCode :: Int -> (Double, ToolPath) -> GCodeM ()
+sliceToGCode layerN (z,tp) = do
+     settings <- ask
+     (gcLayerPrelude settings) layerN z 
+     comment $ "Slice Z="<>realFloat z
+     command $ "G1 Z"<>realFloat z
+     mapM_ toolMoveToGCode tp
+     (gcLayerPostlude settings) layerN z
+     
+slicesToGCode' :: [(Double, ToolPath)] -> GCodeM ()
+slicesToGCode' slices = do
+     settings <- ask
+     gcPrelude settings
+     mapM_ (uncurry sliceToGCode) $ zip [1..] slices
+     gcPostlude settings
 
-slicesToGCode :: GCodeSettings -> [(Double, ToolPath)] -> [GCommand]
+slicesToGCode :: GCodeSettings -> [(Double, ToolPath)] -> T.Text
 slicesToGCode settings slices =
-        gcPrelude settings
-     ++ (concat $ zipWith (sliceToGCode settings) [1..] slices)
-     ++ gcPostlude settings
+     let (_,w) = evalRWS (slicesToGCode' slices) settings s0
+         s0 = GCodeState {gsRetracted=False}
+     in toLazyText w
 
