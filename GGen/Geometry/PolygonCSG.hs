@@ -6,11 +6,12 @@ module GGen.Geometry.PolygonCSG ( -- * Common operations
                                 , exclOr
                                   -- * Internals
                                 , Tag(..)
-                                , segment
+                                , segment, segmentBoth
                                 , segmentEdge
                                 ) where
 
 import Data.Monoid
+import Control.Monad (guard)
 import Data.Maybe (mapMaybe)
 import Data.List (sortBy, foldl', nubBy)
 import Data.Function (on)
@@ -18,6 +19,8 @@ import Data.VectorSpace
 import Data.AffineSpace
 import GGen.Geometry.Types
 import GGen.Geometry.Intersect
+  
+import Debug.Trace
 
 data Tag = Outside
          | Inside
@@ -29,7 +32,7 @@ type Edge = LineSeg Vec2
 
 -- | Klein four group binary operator
 (*+*) :: Tag -> Tag -> Tag
-Outside  *+* a        = a
+Outside  *+* a        =a
 a        *+* b | a==b = Outside
 Inside   *+* NegBound = PosBound
 Inside   *+* PosBound = NegBound
@@ -42,14 +45,27 @@ instance Monoid Tag where
         mappend = (*+*)
 
 -- | Segment and tag two polysolids
-segment :: [Edge] -> [Edge] -> [(Edge, Tag)]
-segment a b = let a' = concat $ map (segmentEdge b) a
-                  b' = concat $ map (segmentEdge a) b
-              in a' ++ b'
-          
+segment, segmentBoth :: [Edge] -> [Edge] -> [(Edge, Tag)]
+segment a b = concat $ map (segmentEdge b) a
+segmentBoth a b = segment a b ++ segment b a
+
+invertTaggedEdge :: (Edge, Tag) -> (Edge, Tag)
+invertTaggedEdge = id
+--invertTaggedEdge (e,t) = (lsInvert e, Inside *+* t)
+
+orientEdge :: (Edge, Tag) -> (Edge, Tag)
+orientEdge te@(e,t)
+  | l <.> (1,0) < 0  = invertTaggedEdge te
+  | l <.> (1,0) == 0 && l <.> (0,1) < 0  = invertTaggedEdge te
+  | otherwise  = te
+  where l = lsDispl e
+
 -- | Segment and tag an edge against a polysolid
 segmentEdge :: [Edge] -> Edge -> [(Edge, Tag)]
-segmentEdge p l =
+segmentEdge p l
+  | lsDispl l <.> (1,0) < 0  = segmentEdge p (lsInvert l)
+  | lsDispl l <.> (1,0) == 0 && lsDispl l <.> (0,1) < 0  = segmentEdge p (lsInvert l)
+  | otherwise = 
         let proj p' = ((p' .-. lsA l) <.> lsDispl l) / (magnitude $ lsDispl l)^2
             innerPoints :: [(Point Vec2, Tag)]
             innerPoints = sortBy (compare `on` (proj . fst))
@@ -58,9 +74,10 @@ segmentEdge p l =
             points = sortBy (compare `on` proj)
                    $ [lsA l, lsB l] ++ map fst innerPoints
             edges = zipWith LineSeg points (tail points)
-        in if null innerPoints
+        in map orientEdge $
+           if null innerPoints
               then [(l, Outside)]
-              else filter (\(e,_) -> not $ lsDispl e =~ 0)
+              else filter (\(e,_) -> not $ magnitude (lsDispl e) =~ 0)
                  $ filter (\(LineSeg a b,_) -> 0 <~ proj a && proj a <~ 1
                                             && 0 <~ proj b && proj b <~ 1)
                  $ zip edges tags
@@ -91,10 +108,16 @@ union p q = filterEdges Outside p'
          ++ parEdges NegBound
   where p' = segment p q
         q' = segment q p
-        parEdges tag = concat $ map (\(a,b) -> [a,b])
-                     $ filter (\(a,b) -> lsDispl a `parallel` lsDispl b)
-                       [(a,b) | a <- filterEdges tag p'
-                              , b <- filterEdges tag q']
+        parEdges tag = traceShow tag $ traceShow (filterEdges NegBound q') $ trList $ concat
+                       $ (do a <- filterEdges tag p'
+                             b <- filterEdges tag q'
+                             guard $ lsDispl a `sameDir` lsDispl b
+                             guard $ IDegenerate == lineSegLineSeg2Intersect a b
+                             return $ tr show [a,b])
+        
+tr :: (x -> String) -> x -> x
+tr f x = trace (f x) x
+trList = tr (unlines . map show)
 
 intersection :: [Edge] -> [Edge] -> [Edge]
 intersection p q  = filterEdges Inside p'
@@ -113,3 +136,4 @@ difference p q  = filterEdges Outside p'
 
 exclOr :: [Edge] -> [Edge] -> [Edge]
 exclOr p q = (p `difference` q) `union` (q `difference` p)
+

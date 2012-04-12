@@ -1,12 +1,17 @@
-{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE NoMonomorphismRestriction, TypeFamilies #-}
 
-import Diagrams.Prelude hiding (P, union, intersection)
+import Diagrams.Prelude hiding (Point(..), union, intersection)
 import qualified Diagrams.Prelude as DP
 import Diagrams.Backend.Cairo.CmdLine
+import Data.Colour
+  
 import GGen.Geometry.Types
 import GGen.Geometry.Polygon
 import GGen.Geometry.PolygonCSG
-import Data.Colour
+import Control.Monad (forM_)
+  
+import Text.PrettyPrint (($$))
+import qualified Text.PrettyPrint as PP
 
 -- Trivial squares
 a, b :: Polygon Vec2
@@ -48,25 +53,58 @@ d = Polygon
     , P ( 0, 3)
     ]
     
+p2p :: Point Vec2 -> DP.Point R2
 p2p (P v) = DP.P v
 
 polygonToPath (Polygon ps) = close $ fromVertices $ map p2p ps
 
+edgeToPath :: (PathLike p, V p ~ R2) => LineSeg Vec2 -> p
 edgeToPath (LineSeg a b) = fromVertices [p2p a, p2p b]
-                           
-taggedEdgeToPath (edge, tag) = edgeToPath edge
-                               # lcA (color `withOpacity` 0.5)
-                               # lw 0.05
-    where color = case tag of
-            Inside   -> blue
-            Outside  -> red
-            PosBound -> green
-            NegBound -> orange
+
+taggedEdgeToPath :: (HasStyle p, PathLike p, V p ~ R2) => (Edge,Tag) -> p
+taggedEdgeToPath (edge, tag) =
+  edgeToPath edge
+  # lcA (color `withOpacity` 0.5)
+  # lw 0.05
+  where color = case tag of
+                     Inside   -> blue
+                     Outside  -> red
+                     PosBound -> green
+                     NegBound -> orange
+        
+--labelledTaggedEdge :: (Edge,Tag) -> a
+labelledTaggedEdge (edge, tag) =
+  taggedEdgeToPath (edge, tag)
+  <> text tag' # translate (pos .-. P (0,0))
+  where pos = alerp (lsA edge) (lsB edge) 0.5 .-^ 0.5 *^ ls2Normal edge RightHanded
+        tag' = case tag of
+          Inside   -> "I"
+          Outside  -> "O"
+          PosBound -> "+"
+          NegBound -> "-"
          
-main = do let segs = segment (polygonToLineSegPath c) (polygonToLineSegPath d)
+prettySegmentation :: [Edge] -> [Edge] -> PP.Doc
+prettySegmentation a b =
+  PP.cat $ map (\l->PP.text (show l) 
+                    $$ (PP.nest 2 $ PP.vcat $ map (PP.text . show) $ segmentEdge a l)
+               ) b
+  
+main = do let segs = segmentBoth (polygonToLineSegPath c) (polygonToLineSegPath d)
+          putStrLn "cd"
+          print $ prettySegmentation (polygonToLineSegPath c) (polygonToLineSegPath d)
+          putStrLn ""
+          putStrLn "dc"
+          print $ prettySegmentation (polygonToLineSegPath d) (polygonToLineSegPath c)
+       
           --let segs = segmentEdge (polygonToLineSegPath d) (LineSeg (P (0,-8)) (P (0,8)))
-          print segs
-          --defaultMain $ mconcat $ map edgeToPath
-          --            $ (polygonToLineSegPath c) `union` (polygonToLineSegPath d)
-          defaultMain $ mconcat $ map taggedEdgeToPath segs
+          --        ++ segmentEdge (polygonToLineSegPath c) (LineSeg (P (0,-5)) (P (0,-3)))
+          --        ++ segmentEdge (polygonToLineSegPath c) (LineSeg (P (0,5)) (P (0,3)))
+          
+          --print $ segmentEdge (polygonToLineSegPath d) (LineSeg (P (0,-8)) (P (0,8)))
+          --print $ segmentEdge (polygonToLineSegPath c) (LineSeg (P (0,-5)) (P (0,-3)))
+          --print $ segmentEdge (polygonToLineSegPath c) (LineSeg (P (0,5)) (P (0,3)))
+       
+          defaultMain $ mconcat $ map edgeToPath
+                      $ (polygonToLineSegPath c) `union` (polygonToLineSegPath d)
+          --defaultMain $ mconcat $ map labelledTaggedEdge segs
 
