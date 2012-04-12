@@ -19,7 +19,7 @@ module GGen.Geometry.Types ( -- | General
                            -- | Two dimensional geometry
                            , R2
                            , NR2
-                           , Point2
+                           , P2
                            , ls2Normal
                            -- | n dimensional geometry
                            , Point(..)
@@ -151,7 +151,7 @@ instance Arbitrary (NonNull R2) where
 type NR2 = R2
 
 -- | Spatial point
-type Point2 = Point R2
+type P2 = Point R2
 
 -- | Find the normal to a line segment in the given direction. ls2Normal
 -- (LineSeg a b) LeftHanded yields a normal pointing to the left as one travels

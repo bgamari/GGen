@@ -86,9 +86,9 @@ fixPolygon2Chirality poly@(Polygon points)
 -- actually crosses the polygon's boundary. This eliminates cases where
 -- the line skims a corner by testing that the dot product of consecutive
 -- edges' normals and the line are of the same sign
-linePolygon2Crossings :: Line R2 -> Polygon R2 -> [Point2]
+linePolygon2Crossings :: Line R2 -> Polygon R2 -> [P2]
 linePolygon2Crossings l@(Line {lDir=dir}) poly =
-        let f :: [LineSeg R2] -> [Point2]
+        let f :: [LineSeg R2] -> [P2]
             f ls@(a:b:c:_) = 
                 let an = ls2Normal a LeftHanded <.> dir
                     bn = ls2Normal b LeftHanded <.> dir
@@ -124,7 +124,7 @@ prop_polygon_line_seg_roundtrip poly@(Polygon points)
                               Just poly' -> liftBool $ poly == poly'
                               Nothing    -> failed {reason="No polygon found"}
 
-prop_line_seg_polygon_roundtrip :: [Point2] -> Result
+prop_line_seg_polygon_roundtrip :: [P2] -> Result
 prop_line_seg_polygon_roundtrip points
         | length points < 3 = rejected
         | otherwise = let ls = polygonToLineSegPath (Polygon points)
@@ -133,7 +133,7 @@ prop_line_seg_polygon_roundtrip points
                       in liftBool $ ls `approx` ls'
 
 -- Properties for linePolygon2Crossings
---prop_line_polygon2_crossings_corner_miss :: Polygon Point2 -> Result
+--prop_line_polygon2_crossings_corner_miss :: Polygon P2 -> Result
 --prop_line_polygon2_crossings_corner_miss poly@(Polygon points) =
 --        let l = Line points
 

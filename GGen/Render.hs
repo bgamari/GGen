@@ -9,7 +9,7 @@ module GGen.Render (
                    , renderPolygons2
                    , renderOrientedPolygons
                    , renderToolpath
-                   , renderPoint2
+                   , renderP2
 
                    -- Utility
                    , renderRegionToSVG
@@ -44,7 +44,7 @@ drawSegment (LineSeg (P (ux,uy,_)) (P (vx,vy,_))) =
         do lineTo ux uy
            lineTo vx vy
 
-moveToPt, lineToPt :: Point2 -> Render ()
+moveToPt, lineToPt :: P2 -> Render ()
 lineToPt (P (x,y)) = lineTo x y
 moveToPt (P (x,y)) = moveTo x y
 
@@ -134,7 +134,7 @@ renderToolpath tp =
                f (ToolMove l Dry) = setSourceRGBA 0 1 0 0.6 >> renderArrow l >> stroke
            mapM_ f tp
 
-renderPoint2 :: Point2 -> Render ()
-renderPoint2 (P (x,y)) =
+renderP2 :: P2 -> Render ()
+renderP2 (P (x,y)) =
         arc x y 0.5 0 (2*pi) >> fill
 

@@ -30,7 +30,7 @@ concatToolPaths tps
         where tps' = filter (not.null) tps
               first = head tps'
               tpDist p tp = magnitude (p .-. tpBegin tp)
-              f :: ToolPath -> [ToolPath] -> Point2 -> ToolPath
+              f :: ToolPath -> [ToolPath] -> P2 -> ToolPath
               f tp [] _ = tp
               f tp rTps pos =
                       let nextToolPaths tp = [ (tpDist pos tp, tp, rTps')
@@ -55,7 +55,7 @@ extrudePolygon = extrudeLineSegPath . polygonToLineSegPath
 -- Positive offset is outwards
 offsetPolygon :: Double -> Polygon R2 -> Polygon R2
 offsetPolygon offset = Polygon . f . polygonToLineSegPath
-        where f :: LineSegPath R2 -> [Point2]
+        where f :: LineSegPath R2 -> [P2]
               f segs@(s:s':_) = 
                 let p = lsB s
                     l  = Line (p .+^ ls2Normal s RightHanded)  (offset *^ normalized (lsDispl s))
@@ -76,7 +76,7 @@ clipLine polys line =
                                                     c  -> c
             sorted = sortBy cmpInter inters
 
-            f :: [Point2] -> Bool -> [LineSeg R2]
+            f :: [P2] -> Bool -> [LineSeg R2]
             f points@(a:b:_) fill = if fill then (LineSeg a b) : (f (tail points) False)
                                             else f (tail points) True
             f (a:[]) True = error $ "Unterminated line segment from possible points "++show sorted++" while clipping "++show line++" against polygons "++show polys

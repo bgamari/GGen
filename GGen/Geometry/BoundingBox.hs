@@ -7,7 +7,7 @@ module GGen.Geometry.BoundingBox ( points2BoundingBox
 import Data.VectorSpace
 import GGen.Geometry.Types
 
-points2BoundingBox :: [Point2] -> Box R2
+points2BoundingBox :: [P2] -> Box R2
 points2BoundingBox [] = (P (0,0), P (0,0))
 points2BoundingBox points =
         let (xs,ys) = unzip $ map (\(P v)->v) points

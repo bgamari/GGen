@@ -27,7 +27,7 @@ instance ApproxEq ToolMove where
 -- | A sequence of ToolMoves. Line segments of successive moves should connect.
 type ToolPath = [ToolMove]
 
-tpBegin, tpEnd :: ToolPath -> Point2
+tpBegin, tpEnd :: ToolPath -> P2
 -- | Start point of a toolpath
 tpBegin [] = error "Empty toolpath has no beginning"
 tpBegin tp = p where ToolMove (LineSeg p _) _ = head tp
