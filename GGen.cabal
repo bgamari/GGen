@@ -50,3 +50,5 @@ Library
   Build-depends:     base, random, cairo, vector-space, QuickCheck, binary, attoparsec, data-binary-ieee754, pretty, bytestring, mtl, transformers
   Exposed-Modules:   GGen, Data.STL
   
+Executable GGen
+  Main-is:           Main.hs
