@@ -25,10 +25,12 @@ class Vector v where
         vec :: v -> Doc
 
 instance Vector R3 where
-        vec (x,y,z) = parens $ hcat $ punctuate (text ", ") $ map approxDouble [x,y,z]
+        vec v = let (x,y,z) = unr3 v
+                in parens $ hcat $ punctuate (text ", ") $ map approxDouble [x,y,z]
 
 instance Vector R2 where
-        vec (x,y) = parens $ hcat $ punctuate (text ", ") $ map approxDouble [x,y]
+        vec v = let (x,y) = unr2 v
+                in parens $ hcat $ punctuate (text ", ") $ map approxDouble [x,y]
 
 point (P v) = vec v
 

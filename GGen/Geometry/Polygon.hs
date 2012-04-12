@@ -78,8 +78,8 @@ fixPolygon2Chirality poly@(Polygon points)
         | cross > 1 = poly
         | otherwise = Polygon $ reverse points
         where a:b:c:_ = points
-              (ux,uy) = a .-. b
-              (vx,vy) = c .-. b
+              (ux,uy) = unr2 $ a .-. b
+              (vx,vy) = unr2 $ c .-. b
               cross = ux*vy - uy*vx
 
 -- | Find points of intersection between a line and polygon where the line

@@ -68,8 +68,8 @@ slice settings faces =
                extInfill = linearInfill 0.4 0
            let (bbMin, bbMax) = facesBoundingBox faces
                bbSize = bbMax .-. bbMin
-               P (_,_,zMin) = bbMin
-               P (_,_,zMax) = bbMax
+               (_,_,zMin) = unp3 bbMin
+               (_,_,zMax) = unp3 bbMax
                region@(rMin,rMax) = (bbMin .-^ 0.2*^bbSize, bbMax .+^ 0.2*^bbSize)
 
            let nSlices = (zMax-zMin) / zStep

@@ -30,23 +30,17 @@ rescaleForRegion (w,h) (rmin,rmax) =
            scale s s
            translate (-cx) (-cy)
            setLineWidth 4e-1
-        where (rw, rh, _) = rmax .-. rmin
+        where (rw, rh, _) = unr3 $ rmax .-. rmin
               viewRatio = w/h
               regionRatio = rw/rh
-              P (cx, cy, _) = rmin .+^ (rmax .-. rmin) ^/ 2
+              (cx, cy, _) = unp3 $ rmin .+^ (rmax .-. rmin) ^/ 2
               widthConstrained = viewRatio < regionRatio
               s = if widthConstrained then 1/rw
                                       else 1/rh
 
--- | Draws a line segment path
-drawSegment :: LineSeg R3 -> Render ()
-drawSegment (LineSeg (P (ux,uy,_)) (P (vx,vy,_))) =
-        do lineTo ux uy
-           lineTo vx vy
-
 moveToPt, lineToPt :: P2 -> Render ()
-lineToPt (P (x,y)) = lineTo x y
-moveToPt (P (x,y)) = moveTo x y
+lineToPt p = let (x,y) = unp2 p in lineTo x y
+moveToPt p = let (x,y) = unp2 p in moveTo x y
 
 -- | Draws a line segment path
 drawSegment2 :: LineSeg R2 -> Render ()
@@ -63,12 +57,12 @@ renderArrow :: LineSeg R2 -> Render ()
 renderArrow l@(LineSeg a b) =
         do drawSegment2 l
            stroke
-           let (dx,dy) = lsDispl l
+           let (dx,dy) = unr2 $ lsDispl l
                angle = atan2 dy dx
                --aLength = 0.15 * (magnitude $ lsDispl l)
                aLength = 2
                aAngle = 20 * pi / 180
-               f a = (cos a, sin a)
+               f a = r2 $ (cos a, sin a)
            moveToPt b
            lineToPt $ b .-^ aLength *^ f (angle-aAngle)
            lineToPt $ b .-^ aLength *^ f (angle+aAngle)
@@ -104,9 +98,9 @@ drawPolygon2 (Polygon points) = do moveToPt $ head points
 -- | Draw a polygon path
 drawPolygon :: Polygon R3 -> Render ()
 drawPolygon (Polygon points) = do moveTo x y
-                                  mapM_ (\(P (x,y,z)) -> lineTo x y) points
+                                  mapM_ (\p->let (x,y,z)=unp3 p in lineTo x y) points
                                   lineTo x y
-                               where P (x,y,_) = head points
+                               where (x,y,z) = unp3 $ head points
 
 -- | Render 2D oriented polygons
 renderOrientedPolygons :: [OrientedPolygon R2] -> Render ()
@@ -135,6 +129,6 @@ renderToolpath tp =
            mapM_ f tp
 
 renderP2 :: P2 -> Render ()
-renderP2 (P (x,y)) =
-        arc x y 0.5 0 (2*pi) >> fill
+renderP2 p =
+        let (x,y) = unp2 p in arc x y 0.5 0 (2*pi) >> fill
 

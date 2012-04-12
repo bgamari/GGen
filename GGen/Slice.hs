@@ -18,19 +18,23 @@ orientPolygon poly fill
         | otherwise     = (poly', LeftHanded)
         where poly' = fixPolygon2Chirality poly
 
+unitZ = r3 (0,0,1)
+        
 -- | Try to find the boundaries sitting in a plane
 -- Assumes slice is in XY plane
 planeSlice :: [Face] -> Double -> Double -> Slice
 planeSlice faces height z =
-        let plane = Plane { planeNormal=(0,0,1), planePoint=bbMin .+^ (0,0,1) ^* z }
-            proj (P (x,y,_)) = P (x,y)  -- | Project point onto XY plane
+        let plane = Plane { planeNormal=unitZ, planePoint=bbMin .+^ unitZ ^* z }
+            proj p = let (x,y,_) = unp3 p
+                     in p2 (x,y)  -- | Project point onto XY plane
             projPolygon = map proj
             projLineSeg (LineSeg a b) = LineSeg (proj a) (proj b)  -- | Project line segment to XY plane
             projLineSegPath = map projLineSeg
-            P (_,_,planeZ) = planePoint plane
+            (_,_,planeZ) = unp3 $ planePoint plane
 
-            inPlane face = (abs (z - planeZ) < height) && (faceNormal face `parallel` (0,0,1))
-                           where (P (_,_,z),_,_) = faceVertices face
+            inPlane face = (abs (z - planeZ) < height) && (faceNormal face `parallel` unitZ)
+                           where (_,_,z) = unp3 p
+                                 (p,_,_) = faceVertices face
             (inPlaneFaces, outPlaneFaces) = partition inPlane faces
             lines :: [LineSeg R3]
             lines = mergeLineSegList

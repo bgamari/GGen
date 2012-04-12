@@ -8,17 +8,17 @@ import Data.VectorSpace
 import GGen.Geometry.Types
 
 points2BoundingBox :: [P2] -> Box R2
-points2BoundingBox [] = (P (0,0), P (0,0))
+points2BoundingBox [] = (p2 (0,0), p2 (0,0))
 points2BoundingBox points =
-        let (xs,ys) = unzip $ map (\(P v)->v) points
-        in ( P (minimum xs, minimum ys)
-           , P (maximum xs, maximum ys) )
+        let (xs,ys) = unzip $ map unp2 points
+        in ( p2 (minimum xs, minimum ys)
+           , p2 (maximum xs, maximum ys) )
 
 points3BoundingBox :: [P3] -> Box R3
 points3BoundingBox points =
-        let (xs,ys,zs) = unzip3 $ map (\(P v)->v) points
-        in ( P (minimum xs, minimum ys, minimum zs)
-           , P (maximum xs, maximum ys, maximum zs) )
+        let (xs,ys,zs) = unzip3 $ map unp3 points
+        in ( p3 (minimum xs, minimum ys, minimum zs)
+           , p3 (maximum xs, maximum ys, maximum zs) )
 
 facesBoundingBox :: [Face] -> Box R3
 facesBoundingBox faces =

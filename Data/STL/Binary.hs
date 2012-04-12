@@ -1,13 +1,14 @@
 module Data.STL.Binary (parse) where
 
+import Control.Applicative       
 import Data.VectorSpace
 import Data.AffineSpace
+import Data.AffineSpace.Point
 import Data.Cross
 import Data.Binary.Get
 import Data.Binary.IEEE754
 import qualified Data.ByteString.Lazy as B
 import qualified Data.ByteString.Char8 as BC
-import Control.Monad (liftM)
 
 import Data.STL.Types
 import GGen.Geometry.Types
@@ -15,9 +16,9 @@ import GGen.Geometry.Types
 vector = do x <- getFloat32le
             y <- getFloat32le
             z <- getFloat32le
-            return (realToFrac x, realToFrac y, realToFrac z)
+            return $ r3 (realToFrac x, realToFrac y, realToFrac z)
 
-vertex = (liftM P) vector
+vertex = (origin .+^) <$> vector
 
 facet = do n <- vector
            a <- vertex

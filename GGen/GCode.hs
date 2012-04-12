@@ -51,8 +51,9 @@ data GCodeState = GCodeState
         } deriving (Show, Eq)
 
 toolMoveToGCode :: GCodeSettings -> ToolMove -> State GCodeState [GCommand]
-toolMoveToGCode settings (ToolMove ls@(LineSeg _ (P (x,y))) Dry) =
-        do state <- get
+toolMoveToGCode settings (ToolMove ls@(LineSeg _ end) Dry) =
+        do let (x,y) = unp2 end
+           state <- get
            let move = printf "G1 X%1.3f Y%1.3f F%1.3" x y (gcDryFeedrate settings)
            if    gcRetractLength settings /= 0 
               && not (gsRetracted state)
@@ -62,8 +63,9 @@ toolMoveToGCode settings (ToolMove ls@(LineSeg _ (P (x,y))) Dry) =
                              , move ]
               else return [ move ]
 
-toolMoveToGCode settings (ToolMove ls@(LineSeg _ (P (x,y))) (Extrude e)) =
-        do state <- get
+toolMoveToGCode settings (ToolMove ls@(LineSeg _ end) (Extrude e)) =
+        do let (x,y) = unp2 end
+           state <- get
            let extrusionArea = pi * (gcExtrusionDia settings / 2)**2
                eVol = e * magnitude (lsDispl ls) * extrusionArea
                move = printf "G1 X%1.3f Y%1.3f E%1.3f F%1.3" x y (eLength settings eVol) (gcExtrudeFeedrate settings) (gcExtrudeFeedrate settings)

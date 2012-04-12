@@ -1,5 +1,5 @@
-{-# LANGUAGE FlexibleContexts, FlexibleInstances, TypeFamilies, UndecidableInstances, TemplateHaskell
-           , TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleContexts, FlexibleInstances, TypeFamilies,
+    UndecidableInstances, TemplateHaskell, TypeSynonymInstances #-}
 
 module GGen.Geometry.Types ( -- | General
                              pointTol
@@ -10,16 +10,16 @@ module GGen.Geometry.Types ( -- | General
                            , nubPointsWithTol
                            , (=~), (>~), (<~), (/=)
                              -- | Three dimensional geometry
-                           , R3
+                           , R3, r3, unr3
                            , NR3
-                           , P3
+                           , P3, p3, unp3
                            , Face(..)
                            , translateFace
                            , faceFromVertices
                            -- | Two dimensional geometry
-                           , R2
+                           , R2, r2, unr2
                            , NR2
-                           , P2
+                           , P2, p2, unp2
                            , ls2Normal
                            -- | n dimensional geometry
                            , Point(..)
@@ -50,6 +50,11 @@ module GGen.Geometry.Types ( -- | General
                            , GGen.Geometry.Types.runTests
                            ) where
 
+import Control.Applicative       
+import Control.Newtype       
+import Graphics.Rendering.Diagrams.Points       
+import Diagrams.TwoD.Types       
+import GGen.Geometry.Types.ThreeD
 import Data.VectorSpace
 import Data.AffineSpace
 import Data.Cross
@@ -97,23 +102,20 @@ instance (ApproxEq v, InnerSpace v, RealFloat (Scalar v)) => ApproxEq (Point v) 
 
 -- Three dimensional geometry
 
--- | Spatial vector (e.g. direction)
-type R3 = (Double, Double, Double)
-
 instance ApproxEq R3 where approx = sameDir
 
+instance Arbitrary R3 where
+        arbitrary = pack <$> arbitrary
+        
 instance Arbitrary (NonNull R3) where
         arbitrary = do NonZero a <- arbitrary
                        NonZero b <- arbitrary
                        NonZero c <- arbitrary
-                       return $ NonNull (a,b,c)
+                       return $ NonNull $ r3 (a,b,c)
 
 -- | Unit normalized spatial vector
 -- TODO: Enforce with type system?
 type NR3 = R3
-
--- | Spatial point (i.e. location in space)
-type P3 = Point R3
 
 -- | Face defined by unit normal and three vertices
 data Face = Face { faceNormal :: NR3
@@ -137,21 +139,18 @@ instance Arbitrary Face where
 
 -- Two dimensional geometry
 
--- | Spatial vector (e.g. direction)
-type R2 = (Double, Double)
-
 instance ApproxEq R2 where approx = sameDir
 
+instance Arbitrary R2 where
+        arbitrary = pack <$> arbitrary
+        
 instance Arbitrary (NonNull R2) where
         arbitrary = do NonZero a <- arbitrary
                        NonZero b <- arbitrary
-                       return $ NonNull (a,b)
+                       return $ NonNull $ r2 (a,b)
 
 -- | Unit normalized spatial vector
 type NR2 = R2
-
--- | Spatial point
-type P2 = Point R2
 
 -- | Find the normal to a line segment in the given direction. ls2Normal
 -- (LineSeg a b) LeftHanded yields a normal pointing to the left as one travels
@@ -160,22 +159,11 @@ ls2Normal :: LineSeg R2 -> Hand -> R2
 ls2Normal l LeftHanded = - ls2Normal l RightHanded
 ls2Normal l RightHanded
         | magnitude (x,y) =~ 0    = error "Trying to get normal of zero-magnitude vector"
-        | otherwise               = normalized (-y, x)
-        where (x,y) = lsDispl l
+        | otherwise               = normalized $ r2 (-y, x)
+        where (x,y) = unr2 $ lsDispl l
 
 
 -- General geometry
-
--- | A point in an affine-space 
-newtype Point v = P v deriving (Show, Eq)
-
-instance AdditiveGroup v => AffineSpace (Point v) where
-        type Diff (Point v) = v
-        P v1 .-. P v2 = v1 ^-^ v2
-        P v1 .+^ v2   = P (v1 ^+^ v2)
-
-instance Ord v => Ord (Point v) where
-        P a `compare` P b = a `compare` b
 
 instance (Arbitrary v, Ord v) => Arbitrary (Point v) where
         arbitrary = do v <- arbitrary

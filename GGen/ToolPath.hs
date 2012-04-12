@@ -71,9 +71,11 @@ outlinePath polys = concat $ map (extrudePolygon.fst) polys
 clipLine :: [Polygon R2] -> Line R2 -> [LineSeg R2]
 clipLine polys line = 
         let inters = concat $ map (linePolygon2Crossings line) polys
-            cmpInter (P (ax,ay)) (P (bx,by)) = case compare ax bx of 
-                                                    EQ -> compare ay by
-                                                    c  -> c
+            cmpInter a b = let (ax,ay) = unp2 a
+                               (bx,by) = unp2 b
+                           in case compare ax bx of 
+                                   EQ -> compare ay by
+                                   c  -> c
             sorted = sortBy cmpInter inters
 
             f :: [P2] -> Bool -> [LineSeg R2]
@@ -95,8 +97,8 @@ angledLinePattern :: Double -> Angle -> Double -> Box R2 -> [Line R2]
 angledLinePattern spacing angle offset (a,b) =
         let l = magnitude (b .-. a)
             ts = map (offset+) [-l,-l+spacing..l]
-            lBegin = alerp a (a .+^ (-sin angle, cos angle))
-        in map (\t -> Line (lBegin t) (cos angle, sin angle)) ts
+            lBegin = alerp a (a .+^ r2 (-sin angle, cos angle))
+        in map (\t -> Line (lBegin t) (r2 (cos angle, sin angle))) ts
 
 -- | Simple infill of lines at a constant angle with constant spacing
 linearInfill :: Double -> Angle -> InfillPattern ()

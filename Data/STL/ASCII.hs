@@ -3,6 +3,7 @@ module Data.STL.ASCII (Data.STL.ASCII.parse) where
 import Control.Applicative       
 import Data.VectorSpace
 import Data.AffineSpace
+import Data.AffineSpace.Point
 import Data.Cross
 import Data.Attoparsec
 import qualified Data.Attoparsec.Char8 as C
@@ -18,7 +19,7 @@ sstring = string . BC.pack
 vector = do x <- entry
             y <- entry
             z <- entry
-            return (x,y,z)
+            return $ r3 (x,y,z)
          where entry = C.char ' ' >> C.double
 
 facet = do C.skipSpace
@@ -41,7 +42,10 @@ facet = do C.skipSpace
                            else n
            return $ Face { faceNormal=normal
                          , faceVertices=(a,b,c) }
-        where vertex = C.skipSpace >> sstring "vertex" >> vector >>= (return . P)
+        where vertex = do C.skipSpace
+                          sstring "vertex"
+                          v <- vector
+                          return $ origin .+^ v
            
 stlFile = do sstring "solid"
              C.skipSpace
