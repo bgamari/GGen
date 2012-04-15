@@ -6,6 +6,7 @@ module GGen.Geometry.Polygon ( lineSegPaths
                              , polygonToLineSegPath
                              , linePolygon2Crossings
                              , fixPolygon2Chirality
+                             , offsetPolygon
                              , runTests
                              ) where
 
@@ -22,7 +23,7 @@ import Data.VectorSpace
 import Data.AffineSpace
 
 import GGen.Geometry.Types hiding (runTests)
-import GGen.Geometry.Intersect (lineSegLineSeg2Intersect, planeFaceIntersect, lineLineSeg2Intersect)
+import GGen.Geometry.Intersect hiding (runTests)
 
 import Test.QuickCheck.All
 import Test.QuickCheck.Property
@@ -112,6 +113,18 @@ linePolygon2Crossings l@(Line {lDir=dir}) poly =
             f (_:_:[]) = []
             segs = polygonToLineSegPath poly
         in nubPoints $ f (segs ++ take 2 segs)
+
+-- | Offset polygon boundaries inward or outwards
+-- Positive offset is outwards
+offsetPolygon :: Double -> Polygon R2 -> Polygon R2
+offsetPolygon offset = Polygon . f . polygonToLineSegPath
+        where f :: LineSegPath R2 -> [P2]
+              f segs@(s:s':_) = 
+                let p = lsB s
+                    l  = Line (p .+^ ls2Normal s RightHanded)  (offset *^ normalized (lsDispl s))
+                    l' = Line (p .+^ ls2Normal s' RightHanded) (offset *^ normalized (lsDispl s'))
+                    IIntersect p' = lineLine2Intersect l l'
+                in p':f (tail segs)
 
 -- QuickCheck properties
 

@@ -16,7 +16,8 @@ import Data.Function (on)
 import Control.Monad.Trans.State
 
 import GGen.Geometry.Types
-import GGen.Geometry.Polygon (polygonToLineSegPath, linePolygon2Crossings)
+
+import GGen.Geometry.Polygon (polygonToLineSegPath, linePolygon2Crossings, offsetPolygon)
 import GGen.Geometry.Intersect (lineLine2Intersect)
 import GGen.Geometry.BoundingBox (polygons2BoundingBox)
 import GGen.Types
@@ -50,18 +51,6 @@ extrudeLineSegPath = map (\l -> ToolMove l (Extrude 1))
 -- | Extrude path outlining polygon
 extrudePolygon :: Polygon R2 -> ToolPath
 extrudePolygon = extrudeLineSegPath . polygonToLineSegPath
-
--- | Offset polygon boundaries inward or outwards
--- Positive offset is outwards
-offsetPolygon :: Double -> Polygon R2 -> Polygon R2
-offsetPolygon offset = Polygon . f . polygonToLineSegPath
-        where f :: LineSegPath R2 -> [P2]
-              f segs@(s:s':_) = 
-                let p = lsB s
-                    l  = Line (p .+^ ls2Normal s RightHanded)  (offset *^ normalized (lsDispl s))
-                    l' = Line (p .+^ ls2Normal s' RightHanded) (offset *^ normalized (lsDispl s'))
-                    IIntersect p' = lineLine2Intersect l l'
-                in p':f (tail segs)
 
 -- | Build the toolpath describing the outline of a slice 
 outlinePath :: [OrientedPolygon R2] -> ToolPath
