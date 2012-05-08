@@ -5,6 +5,7 @@ module GGen.ToolPath ( outlinePath
                      , extrudeLineSegPath
                      , extrudePolygon
                      , flattenPath
+                     , concatOrdered, concatUnordered
                      ) where
 
 import           Control.Monad (join)
@@ -94,7 +95,7 @@ extrudePolygon t = extrudeLineSegPath Ordered t . polygonToLineSegPath
 outlinePath :: t -> [OrientedPolygon R2] -> ToolPath m t
 outlinePath t = ToolPath Unordered . SQ.fromList . map (extrudePolygon t . fst)
 
--- | Build the toolpaths of a stack of slices
+-- | Build the toolpath for a slice
 toolPath :: t -> InfillPattern s -> InfillPattern t -> Slice -> S.State (s,t) (ToolPath m t)
 toolPath t intPattern extPattern (_,opolys) = 
         do (intState, extState) <- S.get
@@ -103,4 +104,11 @@ toolPath t intPattern extPattern (_,opolys) =
                (extInfill, extState') = S.runState (infillPathM t extPattern (map fst extPolys)) extState
            S.put (intState', extState')
            return $ ToolPath Unordered $ SQ.fromList [outlinePath t (map fst opolys), intInfill, extInfill]
+
+concatOrdered :: ToolPath m t -> ToolPath m t -> ToolPath m t
+(ToolPath Ordered a) `concatOrdered` (ToolPath Ordered b) = ToolPath Ordered $ a >< b
+a `concatOrdered` b = ToolPath Ordered $ S.fromList [a,b]
+
+concatUnordered :: ToolPath m t -> ToolPath m t -> ToolPath m t
+a `concatUnordered` b = ToolPath Unordered $ S.fromList [a,b]
 

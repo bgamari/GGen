@@ -22,10 +22,3 @@ data ToolPath m t
      | ToolPath PreserveOrder (Seq (ToolPath m t))  -- | A set of paths without an ordering
      deriving (Eq, Show)
 
-concatOrdered :: ToolPath m t -> ToolPath m t -> ToolPath m t
-(ToolPath Ordered a) `concatOrdered` (ToolPath Ordered b) = ToolPath Ordered $ a >< b
-a `concatOrdered` b = ToolPath Ordered $ S.fromList [a,b]
-
-concatUnordered :: ToolPath m t -> ToolPath m t -> ToolPath m t
-a `concatUnordered` b = ToolPath Unordered $ S.fromList [a,b]
-
