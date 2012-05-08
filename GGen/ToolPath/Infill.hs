@@ -1,5 +1,5 @@
 module GGen.ToolPath.Infill ( -- * General
-                              InfillPattern
+                              InfillPattern(..)
                             , infillPathM
                               -- * Infill patterns
                             , linearInfill
@@ -8,8 +8,13 @@ module GGen.ToolPath.Infill ( -- * General
 
 import Data.VectorSpace
 import Data.AffineSpace
+import Control.Monad.Trans.State       
+import qualified Data.Sequence as S
 
+import GGen.Geometry.Types
 import GGen.Types
+import GGen.Geometry.BoundingBox
+import GGen.Geometry.Clip
 
 -- | Generates an infill pattern
 type PatternGen s = Box R2 -> State s [Line R2]
@@ -47,13 +52,15 @@ polyInfill angles offset infillSpacing =
                       do (angle:angles', offset:offsets') <- get
                          put (angles', offsets')
                          return $ angledLinePattern infillSpacing angle offset box
-
+ 
 -- | Build the toolpath describing the infill of a slice
-infillPathM :: InfillPattern s -> [OrientedPolygon R2] -> State s ToolPath
-infillPathM pattern opolys = 
+infillPathM :: t -> InfillPattern s -> [OrientedPolygon R2] -> State s (ToolPath m t)
+infillPathM t pattern opolys = 
         do let polys = map fst opolys
                bb = polygons2BoundingBox polys
            pat <- (igPattern pattern) bb
            let clipped = concat $ map (clipLine polys) pat
-           return $ concatToolPaths $ map (\l->extrudeLineSegPath [l]) clipped
+           return $ ToolPath Unordered
+                  $ S.fromList
+                  $ map (\l->PathStep $ ToolMove {tmMove=l, tmToolConfig=t}) clipped
 

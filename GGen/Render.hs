@@ -15,9 +15,13 @@ module GGen.Render (
                    , renderRegionToSVG
                    ) where
 
-import Graphics.Rendering.Cairo
-import Data.VectorSpace
+import Prelude hiding (mapM_)
+import Data.Foldable (mapM_)
 import Data.AffineSpace
+import Data.VectorSpace
+import qualified Data.Sequence as S       
+
+import Graphics.Rendering.Cairo
 
 import GGen.Geometry.Types
 import GGen.Types
@@ -121,12 +125,13 @@ renderOrientedPolygons polys =
            mapM_ (drawPolygon2 . fst) $ filter (\(_,hand) -> hand==LeftHanded) polys
            stroke
 
-renderToolpath :: ToolPath -> Render ()
+renderToolpath :: ToolPath t m -> Render ()
 renderToolpath tp =
         do newPath
-           let f (ToolMove l (Extrude _)) = setSourceRGBA 0 0 1 0.6 >> renderArrow l >> stroke
-               f (ToolMove l Dry) = setSourceRGBA 0 1 0 0.6 >> renderArrow l >> stroke
-           mapM_ f tp
+           let f (PathStep (ToolMove l _)) = setSourceRGBA 0 0 1 0.6 >> renderArrow l >> stroke
+               f (ToolPath p s)            = mapM_ f s
+               f _                         = return ()
+           f tp
 
 renderP2 :: P2 -> Render ()
 renderP2 p =

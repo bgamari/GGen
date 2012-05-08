@@ -29,15 +29,18 @@ import           GGen.Render
 import           Text.PrettyPrint.HughesPJ (($$), (<+>))
 import           GGen.Types
 import           GGen.ToolPath
+import           GGen.ToolPath.Infill
 import           GGen.GCode
+import           GGen.GCode.Extruder
 
 import           Graphics.Rendering.Cairo
 import           Control.Monad (liftM)
 
-data GGenSettings s = GGenSettings { ggSliceZStep :: Double
-                                   , ggInfillPattern :: InfillPattern s
-                                   , ggGCodeSettings :: GCodeSettings
-                                   }
+data GGenSettings settings infill
+     = GGenSettings { ggSliceZStep :: Double
+                    , ggInfillPattern :: InfillPattern infill
+                    , ggGCodeSettings :: settings
+                    }
 
 -- | When we slice exactly in the plane of a face, nasty things can happen with
 -- numerical error. While we try to handle these properly, sliceFudge is one
@@ -45,7 +48,7 @@ data GGenSettings s = GGenSettings { ggSliceZStep :: Double
 -- that we avoid these problems, even with nice even sliceZSteps.
 sliceFudge = 1e-6
 
-ggenMain :: GGenSettings s -> IO ()
+ggenMain :: GGenSettings setting infill -> IO ()
 ggenMain settings =
         do filename:_ <- getArgs
            let root = maybe (error "Filename should end in .stl") id
@@ -58,11 +61,12 @@ ggenMain settings =
                region = (bbMin .-^ 0.2*^bbSize, bbMax .+^ 0.2*^bbSize)
            mapM_ (renderSlice root region) slices
 
-           let gcode = slicesToGCode (ggGCodeSettings settings) slices
+           let flattened = flattenPath (p2 (0,0)) slices
+               gcode = slicesToGCode (ggGCodeSettings settings) flattened
            TIO.writeFile (root++".gcode") gcode
            return ()
 
-slice :: GGenSettings s -> [Face] -> IO [(Double, ToolPath)]
+slice :: GGenSettings settings infill -> [Face] -> IO [(Double, Seq (ToolMove marker tool))]
 slice settings faces =
         do let zStep = ggSliceZStep settings
                infill = ggInfillPattern settings
@@ -88,7 +92,7 @@ stripSuffix a b
         | a `isSuffixOf` b  = stripSuffix (init a) (init b)
         | otherwise         = Nothing
 
-renderSlice :: String -> Box R3 -> (Double, ToolPath) -> IO ()
+renderSlice :: String -> Box R3 -> (Double, ToolPath marker tool) -> IO ()
 renderSlice rootName region@(rMin,rMax) (z,tp) =
         do printf "Slice Z=%1.2f\n" z
            renderRegionToSVG filename (500,500) region $

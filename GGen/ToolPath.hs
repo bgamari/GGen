@@ -1,98 +1,106 @@
-{-# LANGUAGE PackageImports, TypeFamilies #-}
+{-# LANGUAGE PatternGuards, PackageImports, TypeFamilies #-}
 
 module GGen.ToolPath ( outlinePath
                      , toolPath
+                     , extrudeLineSegPath
+                     , extrudePolygon
+                     , flattenPath
                      ) where
 
-import Data.VectorSpace
-import Data.AffineSpace
-import Data.List (foldl', sortBy, deleteBy, partition)
-import Data.Function (on)
-import Control.Monad.Trans.State
+import           Control.Monad (join)
+import qualified Control.Monad.Trans.State as S
+import qualified Control.Monad.Trans.RWS as RWS
+import           Data.AffineSpace
+import           Data.Foldable
+import           Data.Function (on)
+import           Data.List (partition, foldl', (\\))
+import           Data.Maybe
+import           Data.Traversable
+import           Data.VectorSpace
+import           Prelude hiding (mapM, mapM_)
 
-import qualified Data.Sequence as S
+import           Data.Sequence (Seq, ViewL(..), ViewR(..), (><))
+import qualified Data.Sequence as SQ
 
-import GGen.Geometry.Types
-import GGen.Geometry.Clip
-import GGen.Geometry.Polygon (polygonToLineSegPath, linePolygon2Crossings, offsetPolygon)
-import GGen.Geometry.Intersect (lineLine2Intersect)
-import GGen.Geometry.BoundingBox (polygons2BoundingBox)
-import GGen.Types
-import GGen.ToolPath.Infill
-
-deleteFirst :: Eq a => Seq a -> a -> Seq a 
-deleteFirst xs x = front >< S.drop 1 back 
-        where (front, back) = S.break (==x) xs 
-
-closestStart :: Point R2 -> ToolPath m t -> Maybe (Point R2)
-closestStart p0 (ToolMove {tpMove=l}) =
-             Just $ minimumBy (compare `on` distance p0) [lsA l, lsB l]
-closestStart p0 (ToolPath Ordered s) =
-             case viewl s of
-                  a :< _     -> Just $ closestStart a
-                  otherwise  -> Nothing
-closestStart p0 (ToolPath Unordered s) =
-             case S.filter isJust $ fmap (closestStart p0) s of
-                  a | S.null a  -> Nothing
-                  a             -> Just $ minimumBy (compare `on` distance p0) a
-closestStart p0 (Marker _) = Nothing
-           
-
--- | `popMin f xs` returns the minimum of `xs` under the comparison of
--- `fst $ map f xs`. It addition, it returns `xs` with the
--- corresponding minimal `x` removed. This is convenient in computing,
--- for instance, distance-optimal tool move scheduling
-popMin :: Ord b => (a -> [(b,c)]) -> [a] -> ([a],c)
-popMin f xs =
-        let (x,_,c) = minimumBy (compare `on` (\(_,b,_)->b))
-                      $ do x <- xs
-                           (b,c) <- f x
-                           return (x,b,c)
-        in (xs // x, c)
+import           GGen.Geometry.Types
+import           GGen.Geometry.Clip
+import           GGen.Geometry.Polygon (polygonToLineSegPath, linePolygon2Crossings, offsetPolygon)
+import           GGen.Geometry.Intersect (lineLine2Intersect)
+import           GGen.Geometry.BoundingBox (polygons2BoundingBox)
+import           GGen.Types
+import           GGen.ToolPath.Infill
          
-concatToolPaths' :: ToolPath m t -> [ToolPath m t] -> ToolPath m t
-concatToolPaths' tp [] = tp
-concatToolPaths' tp tps =
-        let p0 = tpEnd tp
-            f tp = map (distance p0) [tp, tpInvert tp]
-            (tps', tp') = popMin f tps
-        in concatToolPaths (tp++tp') tps'
-        
-concatToolPaths :: [ToolPath m t] -> ToolPath m t
-concatToolPaths tps = concatToolPaths' tps
-                
+findR :: (a -> Bool) -> Seq a -> Maybe a
+findR f xs | xs' :> x <- SQ.viewr xs, f x = Just x
+findR f _ = Nothing
+
+findL :: (a -> Bool) -> Seq a -> Maybe a
+findL f xs | x :< xs' <- SQ.viewl xs, f x = Just x
+findL f _ = Nothing
+
+deleteFirstWith :: (a -> a -> Bool) -> Seq a -> a -> Seq a
+deleteFirstWith f xs x = front >< SQ.drop 1 back 
+        where (front, back) = SQ.breakl (f x) xs 
+
 -- | `flattenPath p0 tp` reduces a ToolPath `tp` to a minimal distance
 -- OrderedPath from the given starting point `p0`
-flattenPath :: P3 -> ToolPath m t -> ToolPath m t
-flattenPath p0 tp = OrderedPath $ doPath p0 tp
-        where doPath :: P3 -> ToolPath m t -> [ToolPath m t]
-              doPath p0 tp@(ToolMove {}) = [tp]
-              doPath p0 (ToolPath path) = path
-              doPath p0 (UnorderedPath tps) =
-                     let f tp = map (\x->(magnitude $ x .-. p0, x)) [tp, tpInvert tp]
-                         (tps', tp') = popMin f tps
-                     in tps'
+flattenPath :: (Eq m, Eq t) => P2 -> ToolPath m t -> Seq (ToolMove m t)
+flattenPath p0 tp = snd $ RWS.evalRWS (doPath tp) () p0
+        where --doPath :: ToolPath m t -> RWS.RWS () (Seq (ToolMove m t)) P2 ()
+              doPath (PathStep tm@(ToolMove {tmMove=l})) = do RWS.put $ lsB l
+                                                              RWS.tell $ SQ.singleton tm -- TODO: Invert
+              doPath (ToolPath Ordered path) = mapM_ doPath path
+              doPath (ToolPath Unordered path) = do
+                     p0 <- RWS.get
+                     as <- forM path $ \path'->do
+                        let (_, w) = RWS.evalRWS (doPath tp) () p0
+                        p1 <- RWS.get
+                        return (tp, p1, w)
+
+                     let --dist :: (ToolPath m t, P2, Seq (ToolMove m t)) -> Double
+                         dist (tp, p1, w) | SQ.null w = 0
+                                          | otherwise = distance p0 (lsA $ tmMove $ head $ toList w)
+                         (tp, p2, w) = minimumBy (compare `on` dist) as
+                     RWS.put p2
+                     doPath $ ToolPath Unordered $ deleteFirstWith (==) path tp
+              doPath x = return ()
               
+              
+tpBegin :: ToolPath m t -> Maybe P2
+tpBegin (ToolPath _ path) = join $ find isJust $ fmap tpBegin path
+tpBegin t@(PathStep (ToolMove {tmMove=l})) = Just $ lsA l
+tpBegin _ = Nothing
+
+tpEnd :: ToolPath m t -> Maybe P2
+tpEnd (ToolPath _ path) = join $ find isJust $ fmap tpEnd path
+tpEnd t@(PathStep (ToolMove {tmMove=l})) = Just $ lsB l
+tpEnd _ = Nothing
+
+tpInvert :: ToolPath m t -> ToolPath m t
+tpInvert (ToolPath Unordered path) = ToolPath Unordered $ fmap tpInvert path
+tpInvert (ToolPath Ordered path) = ToolPath Ordered $ SQ.reverse $ fmap tpInvert path
+tpInvert (PathStep t@(ToolMove {tmMove=l})) = PathStep (t { tmMove=lsInvert l })
+tpInvert a = a
 
 -- | Extrude path of line segments
-extrudeLineSegPath :: LineSegPath R2 -> ToolPath m t
-extrudeLineSegPath = OrderedPath . map (\l -> ToolMove l (Extrude 1))
+extrudeLineSegPath :: PreserveOrder -> t -> LineSegPath R2 -> ToolPath m t
+extrudeLineSegPath o t = ToolPath o . SQ.fromList . map (\l -> PathStep $ ToolMove l t)
 
 -- | Extrude path outlining polygon
-extrudePolygon :: Polygon R2 -> ToolPath
-extrudePolygon = extrudeLineSegPath . polygonToLineSegPath
+extrudePolygon :: t -> Polygon R2 -> ToolPath m t
+extrudePolygon t = extrudeLineSegPath Ordered t . polygonToLineSegPath
 
--- | Build the toolpath describing the outline of a slice 
-outlinePath :: [OrientedPolygon R2] -> ToolPath
-outlinePath polys = concat $ map (extrudePolygon.fst) polys
+-- | Build the toolpath describing the outline of a slice
+outlinePath :: t -> [OrientedPolygon R2] -> ToolPath m t
+outlinePath t = ToolPath Unordered . SQ.fromList . map (extrudePolygon t . fst)
 
 -- | Build the toolpaths of a stack of slices
-toolPath :: InfillPattern s -> InfillPattern t -> Slice -> State (s,t) ToolPath
-toolPath intPattern extPattern (_,opolys) = 
-        do (intState, extState) <- get
+toolPath :: t -> InfillPattern s -> InfillPattern t -> Slice -> S.State (s,t) (ToolPath m t)
+toolPath t intPattern extPattern (_,opolys) = 
+        do (intState, extState) <- S.get
            let (intPolys, extPolys) = partition (\(p,exposure) -> exposure==Internal) opolys
-               (intInfill, intState') = runState (infillPathM intPattern (map fst intPolys)) intState
-               (extInfill, extState') = runState (infillPathM extPattern (map fst extPolys)) extState
-           put (intState', extState')
-           return $ concatToolPaths [outlinePath (map fst opolys), intInfill, extInfill]
+               (intInfill, intState') = S.runState (infillPathM t intPattern (map fst intPolys)) intState
+               (extInfill, extState') = S.runState (infillPathM t extPattern (map fst extPolys)) extState
+           S.put (intState', extState')
+           return $ ToolPath Unordered $ SQ.fromList [outlinePath t (map fst opolys), intInfill, extInfill]
 

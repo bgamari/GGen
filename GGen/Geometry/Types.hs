@@ -207,7 +207,7 @@ type Box v = (Point v, Point v)
 -- | Line segment defined by two terminal points
 data LineSeg v = LineSeg { lsA :: Point v
                          , lsB :: Point v
-                         } deriving (Show)
+                         } deriving (Eq, Show)
 
 instance (InnerSpace v, RealFloat (Scalar v)) => ApproxEq (LineSeg v) where
         u `approx` v  = lsA u `coincident` lsA v && lsB u `coincident` lsB v
