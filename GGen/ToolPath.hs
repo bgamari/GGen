@@ -16,6 +16,7 @@ import           Data.Foldable
 import           Data.Function (on)
 import           Data.List (partition, foldl', (\\))
 import           Data.Maybe
+import           Data.Monoid
 import           Data.Traversable
 import           Data.VectorSpace
 import           Prelude hiding (mapM, mapM_)
@@ -39,13 +40,18 @@ findL :: (a -> Bool) -> Seq a -> Maybe a
 findL f xs | x :< xs' <- SQ.viewl xs, f x = Just x
 findL f _ = Nothing
 
-deleteFirstWith :: (a -> a -> Bool) -> Seq a -> a -> Seq a
-deleteFirstWith f xs x = front >< SQ.drop 1 back 
-        where (front, back) = SQ.breakl (f x) xs 
-
+-- | For each element in a sequence, return the element and the
+-- sequence with the element removed.
+removeElement :: Seq a -> [(a, Seq a)]
+removeElement = 
+  let removeElement' :: Seq a -> Seq a -> [(a, Seq a)]
+      removeElement' past xs = let x SQ.:< rest = SQ.viewl xs
+                               in (x, past <> rest) : removeElement' (past SQ.|> x) rest
+  in removeElement' SQ.empty
+        
 -- | `flattenPath p0 tp` reduces a ToolPath `tp` to a minimal distance
 -- OrderedPath from the given starting point `p0`
-flattenPath :: (Eq m, Eq t) => P2 -> ToolPath m t -> Seq (ToolMove m t)
+flattenPath :: P2 -> ToolPath m t -> Seq (ToolMove m t)
 flattenPath p0 tp = snd $ RWS.evalRWS (doPath tp) () p0
         where --doPath :: ToolPath m t -> RWS.RWS () (Seq (ToolMove m t)) P2 ()
               doPath (PathStep tm@(ToolMove {tmMove=l})) = do RWS.put $ lsB l
@@ -53,17 +59,19 @@ flattenPath p0 tp = snd $ RWS.evalRWS (doPath tp) () p0
               doPath (ToolPath Ordered path) = mapM_ doPath path
               doPath (ToolPath Unordered path) = do
                      p0 <- RWS.get
-                     as <- forM path $ \path'->do
-                        let (_, w) = RWS.evalRWS (doPath tp) () p0
+                     as <- forM (removeElement path) $ \(tp', path')->do
+                        let (_, w) = RWS.evalRWS (doPath tp') () p0
                         p1 <- RWS.get
-                        return (tp, p1, w)
+                        return (tp', p1, w, path')
 
                      let --dist :: (ToolPath m t, P2, Seq (ToolMove m t)) -> Double
-                         dist (tp, p1, w) | SQ.null w = 0
-                                          | otherwise = distance p0 (lsA $ tmMove $ head $ toList w)
-                         (tp, p2, w) = minimumBy (compare `on` dist) as
+                         dist (tp, p1, w, path') | SQ.null w = 0
+                                                 | otherwise = distance p0 
+                                                               $ lsA $ tmMove
+                                                               $ head $ toList w
+                         (tp, p2, w, path') = minimumBy (compare `on` dist) as
                      RWS.put p2
-                     doPath $ ToolPath Unordered $ deleteFirstWith (==) path tp
+                     doPath $ ToolPath Unordered path'
               doPath x = return ()
               
               
