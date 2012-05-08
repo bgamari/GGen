@@ -48,42 +48,40 @@ data GGenSettings settings infill
 -- that we avoid these problems, even with nice even sliceZSteps.
 sliceFudge = 1e-6
 
-ggenMain :: GGenSettings setting infill -> IO ()
+ggenMain :: GGenSettings ExtruderSettings infill -> IO ()
 ggenMain settings =
         do filename:_ <- getArgs
            let root = maybe (error "Filename should end in .stl") id
                     $ stripSuffix ".stl" filename
            stl <- Data.STL.parse filename
-           slices <- slice settings (stlFacets stl)
+           let slices = slice settings $ stlFacets stl
 
            let (bbMin, bbMax) = facesBoundingBox (stlFacets stl)
                bbSize = bbMax .-. bbMin
                region = (bbMin .-^ 0.2*^bbSize, bbMax .+^ 0.2*^bbSize)
            mapM_ (renderSlice root region) slices
 
-           let flattened = flattenPath (p2 (0,0)) slices
-               gcode = slicesToGCode (ggGCodeSettings settings) flattened
+           let gcode = slicesToGCode (ggGCodeSettings settings) slices
            TIO.writeFile (root++".gcode") gcode
            return ()
 
-slice :: GGenSettings settings infill -> [Face] -> IO [(Double, Seq (ToolMove marker tool))]
+slice :: GGenSettings ExtruderSettings infill -> [Face] -> [(Double, ToolPath marker tool)]
 slice settings faces =
-        do let zStep = ggSliceZStep settings
-               infill = ggInfillPattern settings
-               extInfill = linearInfill 0.4 0
-           let (bbMin, bbMax) = facesBoundingBox faces
-               bbSize = bbMax .-. bbMin
-               (_,_,zMin) = unp3 bbMin
-               (_,_,zMax) = unp3 bbMax
-               region@(rMin,rMax) = (bbMin .-^ 0.2*^bbSize, bbMax .+^ 0.2*^bbSize)
+        let zStep = ggSliceZStep settings
+            infill = ggInfillPattern settings
+            extInfill = linearInfill 0.4 0
+            (bbMin, bbMax) = facesBoundingBox faces
+            bbSize = bbMax .-. bbMin
+            (_,_,zMin) = unp3 bbMin
+            (_,_,zMax) = unp3 bbMax
+            region@(rMin,rMax) = (bbMin .-^ 0.2*^bbSize, bbMax .+^ 0.2*^bbSize)
 
-           let nSlices = (zMax-zMin) / zStep
-               sliceZs = map (\i->zMin + i*zStep + sliceFudge) [0..nSlices]
-               slices = map (planeSlice faces zStep) sliceZs
-               toolpaths = zip sliceZs
-                         $ evalState (mapM (toolPath infill extInfill) slices) (igInitialState infill, igInitialState extInfill)
-
-           return toolpaths
+            nSlices = (zMax-zMin) / zStep
+            sliceZs = map (\i->zMin + i*zStep + sliceFudge) [0..nSlices]
+            slices = map (planeSlice faces zStep) sliceZs
+        in zip sliceZs
+           $ evalState (mapM (toolPath infill extInfill) slices)
+                       (igInitialState infill, igInitialState extInfill)
 
 -- | stripSuffix a b strips the suffix a from list b
 stripSuffix :: Eq a => [a] -> [a] -> Maybe [a]
