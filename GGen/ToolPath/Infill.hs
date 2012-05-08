@@ -18,6 +18,7 @@ import GGen.Geometry.Clip
 
 -- | Generates an infill pattern
 type PatternGen s = Box R2 -> State s [Line R2]
+
 data InfillPattern s = InfillPattern { igInitialState :: s
                                      , igPattern :: PatternGen s
                                      } deriving (Show, Eq)

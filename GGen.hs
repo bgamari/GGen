@@ -6,7 +6,6 @@ module GGen( GGenSettings(..)
            -- For convenience
            , hexInfill
            , comment, command
-           , GCodeSettings(..)
            ) where
 
 import           Control.Monad.Trans.State (evalState)
@@ -30,16 +29,17 @@ import           Text.PrettyPrint.HughesPJ (($$), (<+>))
 import           GGen.Types
 import           GGen.ToolPath
 import           GGen.ToolPath.Infill
+import           GGen.ToolPath.Extruder
 import           GGen.GCode
 import           GGen.GCode.Extruder
 
 import           Graphics.Rendering.Cairo
 import           Control.Monad (liftM)
 
-data GGenSettings settings infill
+data GGenSettings tool infill
      = GGenSettings { ggSliceZStep :: Double
                     , ggInfillPattern :: InfillPattern infill
-                    , ggGCodeSettings :: settings
+                    , ggToolSettings :: tool
                     }
 
 -- | When we slice exactly in the plane of a face, nasty things can happen with
@@ -61,11 +61,11 @@ ggenMain settings =
                region = (bbMin .-^ 0.2*^bbSize, bbMax .+^ 0.2*^bbSize)
            mapM_ (renderSlice root region) slices
 
-           let gcode = slicesToGCode (ggGCodeSettings settings) slices
+           let gcode = slicesToGCode (ggToolSettings settings) slices
            TIO.writeFile (root++".gcode") gcode
            return ()
 
-slice :: GGenSettings ExtruderSettings infill -> [Face] -> [(Double, ToolPath marker tool)]
+slice :: GGenSettings ExtruderSettings infill -> [Face] -> [(Double, ToolPath marker ExtruderMove)]
 slice settings faces =
         let zStep = ggSliceZStep settings
             infill = ggInfillPattern settings
@@ -80,7 +80,7 @@ slice settings faces =
             sliceZs = map (\i->zMin + i*zStep + sliceFudge) [0..nSlices]
             slices = map (planeSlice faces zStep) sliceZs
         in zip sliceZs
-           $ evalState (mapM (toolPath infill extInfill) slices)
+           $ evalState (mapM (toolPath (Extrude 1) infill extInfill) slices)
                        (igInitialState infill, igInitialState extInfill)
 
 -- | stripSuffix a b strips the suffix a from list b

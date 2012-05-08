@@ -104,7 +104,7 @@ outlinePath :: t -> [OrientedPolygon R2] -> ToolPath m t
 outlinePath t = ToolPath Unordered . SQ.fromList . map (extrudePolygon t . fst)
 
 -- | Build the toolpath for a slice
-toolPath :: t -> InfillPattern s -> InfillPattern t -> Slice -> S.State (s,t) (ToolPath m t)
+toolPath :: t -> InfillPattern s -> InfillPattern s' -> Slice -> S.State (s,s') (ToolPath m t)
 toolPath t intPattern extPattern (_,opolys) = 
         do (intState, extState) <- S.get
            let (intPolys, extPolys) = partition (\(p,exposure) -> exposure==Internal) opolys

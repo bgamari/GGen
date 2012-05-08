@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
                 
 import GGen
+import GGen.GCode.Extruder       
 
 infillOffset = 0
 infillSpacing = 1.5
@@ -8,7 +9,7 @@ infillSpacing = 1.5
 settings = GGenSettings
         { ggSliceZStep = 0.4
         , ggInfillPattern = hexInfill infillOffset infillSpacing
-        , ggGCodeSettings = gcodeSettings
+        , ggToolSettings = gcodeSettings
         }
 
 layerPostlude 2 _ = do command "F300"
@@ -18,7 +19,7 @@ layerPostlude _ _ = return ()
               
 layerPrelude _ _ = return ()
 
-gcodeSettings = GCodeSettings
+gcodeSettings = ExtruderSettings
         { gcFilamentDia = 3
         , gcSlipRate = 2
         , gcExtrusionDia = 0.4
