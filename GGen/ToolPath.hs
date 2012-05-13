@@ -53,25 +53,11 @@ removeElement =
 -- OrderedPath from the given starting point `p0`
 flattenPath :: P2 -> ToolPath m t -> Seq (ToolMove m t)
 flattenPath p0 tp = snd $ RWS.evalRWS (doPath tp) () p0
-        where --doPath :: ToolPath m t -> RWS.RWS () (Seq (ToolMove m t)) P2 ()
+        where doPath :: ToolPath m t -> RWS.RWS () (Seq (ToolMove m t)) P2 ()
               doPath (PathStep tm@(ToolMove {tmMove=l})) = do RWS.put $ lsB l
                                                               RWS.tell $ SQ.singleton tm -- TODO: Invert
               doPath (ToolPath Ordered path) = mapM_ doPath path
-              doPath (ToolPath Unordered path) = do
-                     p0 <- RWS.get
-                     as <- forM (removeElement path) $ \(tp', path')->do
-                        let (_, w) = RWS.evalRWS (doPath tp') () p0
-                        p1 <- RWS.get
-                        return (tp', p1, w, path')
-
-                     let --dist :: (ToolPath m t, P2, Seq (ToolMove m t)) -> Double
-                         dist (tp, p1, w, path') | SQ.null w = 0
-                                                 | otherwise = distance p0 
-                                                               $ lsA $ tmMove
-                                                               $ head $ toList w
-                         (tp, p2, w, path') = minimumBy (compare `on` dist) as
-                     RWS.put p2
-                     doPath $ ToolPath Unordered path'
+              doPath (ToolPath Unordered path) = mapM_ doPath path
               doPath x = return ()
               
               
