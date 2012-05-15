@@ -63,7 +63,7 @@ setRetracted retracted =
            state <- get
            when (gcRetractLength settings /= 0 
                  && gsRetracted state /= retracted) $ do
-                put state {gsRetracted=True}
+                put state {gsRetracted=retracted}
                 case retracted of
                      True ->  command $ "G1E-"<>showReal (gcRetractLength settings)
                                         <>"F"<>showReal (gcRetractRate settings)
