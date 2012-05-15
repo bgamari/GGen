@@ -27,26 +27,26 @@ import           GGen.Types
 data ExtruderSettings = ExtruderSettings
         {
         -- * Extrusion parameters
-          gcFilamentDia :: Double -- | Diameter of filament
-        , gcSlipRate :: Double -- | The ratio of actual feed distance to E axis
-                               -- distance (0 means completely slipping, 1
-                               -- means no slip)
-        , gcExtrusionDia :: Double -- | Diameter of extruded filament
+          gcFilamentDia :: Double           -- | Diameter of filament
+        , gcSlipRate :: Double              -- | The ratio of actual feed distance to E axis
+                                            -- distance (0 means completely slipping, 1
+                                            -- means no slip)
+        , gcExtrusionDia :: Double          -- | Diameter of extruded filament
 
         -- * Feedrates
-        , gcDryFeedrate :: Double -- | Feedrate during dry move
-        , gcExtrudeFeedrate :: Double -- | Feedrate during extrusion
+        , gcDryFeedrate :: Double           -- | Feedrate during dry move
+        , gcExtrudeFeedrate :: Double       -- | Feedrate during extrusion
 
         -- * G-code output
-        , gcPrelude :: ExtruderM () -- | Commands at beginning of G-code output
-        , gcLayerPrelude :: Int -> Double -> ExtruderM () -- | Commands at beginning of each layer
+        , gcPrelude :: ExtruderM ()         -- | Commands at beginning of G-code output
+        , gcLayerPrelude :: Int -> Double -> ExtruderM ()  -- | Commands at beginning of each layer
         , gcLayerPostlude :: Int -> Double -> ExtruderM () -- | Commands at end of each layer
-        , gcPostlude :: ExtruderM () -- | Commands at end of G-code output
+        , gcPostlude :: ExtruderM ()        -- | Commands at end of G-code output
 
         -- * Retraction options
-        , gcRetractMinDist :: Double -- | Minimum move distance to retract
-        , gcRetractLength :: Double -- | Amount to retract by
-        , gcRetractRate :: Double -- | Retraction feedrate
+        , gcRetractMinDist :: Double        -- | Minimum move distance to retract
+        , gcRetractLength :: Double         -- | Amount to retract by
+        , gcRetractRate :: Double           -- | Retraction feedrate
         }
 
 data ExtruderState = ExtruderState { gsRetracted :: Bool
